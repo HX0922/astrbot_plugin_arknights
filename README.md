@@ -51,6 +51,14 @@ uv pip install -e /path/to/AstrBot
 pytest tests/ -v
 ```
 
+## 声明
+
+本项目仅移植了 AmiyaBot 的基础游戏信息查询功能（干员、公招、抽卡、材料、关卡等），
+**不包含**兔兔的角色设定、对话人格以及 AmiyaBot 丰富的插件生态。
+如果你想体验完整的兔兔，请前往 [amiyabot.com](https://www.amiyabot.com/) 支持原版。
+
+在此基础上，我们计划逐步加入明日方舟游戏内容的 RAG 检索、机制解析、数值计算等功能，敬请期待。
+
 ## 数据源
 
 游戏数据来自 [ArknightsGameResource](https://github.com/yuanyan3060/ArknightsGameResource)。
