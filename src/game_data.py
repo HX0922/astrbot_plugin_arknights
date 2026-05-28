@@ -87,8 +87,11 @@ class ArkData:
         path = self._gamedata / filename
         if not path.exists():
             return {}
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, Exception):
+            return {}
 
     # ── 属性（延迟加载）────────────────────────────────
 
@@ -107,13 +110,15 @@ class ArkData:
     @property
     def items(self) -> dict:
         if self._items is None:
-            self._items = self._load_json("item_table.json")
+            raw = self._load_json("item_table.json")
+            self._items = raw.get("items", raw)
         return self._items
 
     @property
     def stages(self) -> dict:
         if self._stages is None:
-            self._stages = self._load_json("stage_table.json")
+            raw = self._load_json("stage_table.json")
+            self._stages = raw.get("stages", raw)
         return self._stages
 
     @property
@@ -133,10 +138,6 @@ class ArkData:
     @property
     def gacha_table(self) -> dict:
         return self._load_json("gacha_table.json")
-
-    @property
-    def recruit_table(self) -> dict:
-        return self._load_json("recruit_table.json")
 
     # ── 名称索引 ──────────────────────────────────────
 
