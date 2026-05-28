@@ -1,0 +1,203 @@
+"""
+AstrBot Arknights Plugin — 明日方舟游戏数据查询插件
+
+从 AmiyaBot V6 迁移至 AstrBot Star 插件架构。
+支持: 干员查询 / 公开招募 / 卡池模拟 / 材料关卡查询
+
+数据源: ArknightsGameResource (Git Submodule)
+"""
+from astrbot.api.event import filter, AstrMessageEvent
+from astrbot.api.star import Context, Star
+from astrbot.api.message_components import Plain, Image
+from astrbot.api import logger
+
+from src.game_data import ArkData
+from src.operator import format_operator_brief
+from src.recruit import RecruitCalculator
+from src.gacha import GachaPool
+
+
+class ArknightsPlugin(Star):
+    def __init__(self, context: Context):
+        super().__init__(context)
+
+    async def initialize(self):
+        """插件激活时加载游戏数据"""
+        logger.info("[Arknights] 正在初始化插件...")
+        try:
+            ArkData()  # 触发数据预加载
+            logger.info("[Arknights] 游戏数据加载完成")
+        except Exception as e:
+            logger.error(f"[Arknights] 数据加载失败: {e}")
+
+    async def terminate(self):
+        """插件禁用时清理"""
+        logger.info("[Arknights] 插件已停止")
+
+    # ── /角色 ──────────────────────────────────────────
+
+    @filter.command("角色")
+    async def cmd_character(self, event: AstrMessageEvent):
+        """查询干员信息。用法: /角色 干员名"""
+        name = event.message_str.replace("/角色", "").strip()
+        if not name:
+            yield event.plain_result(
+                "博士，请输入要查询的干员名。\n用法: /角色 阿米娅"
+            )
+            return
+
+        data = ArkData()
+        char_ids = data.resolve_char(name)
+        if not char_ids:
+            yield event.plain_result(
+                f"博士，找不到名为「{name}」的干员，请检查名称。"
+            )
+            return
+
+        if len(char_ids) > 1:
+            names = [
+                data.chars[cid]["name"]
+                for cid in char_ids[:10]
+                if cid in data.chars
+            ]
+            name_list = "\n".join(f"{i+1}. {n}" for i, n in enumerate(names))
+            yield event.plain_result(
+                f"博士，找到多个匹配干员：\n{name_list}\n"
+                f"请使用 /角色 完整名称 查询。"
+            )
+            return
+
+        char = data.chars[char_ids[0]]
+        text = format_operator_brief(char)
+        img_path = data.get_char_image_path(char_ids[0], "portrait")
+
+        chain = [Plain(text)]
+        if img_path:
+            chain.append(Image.fromFileSystem(img_path))
+        yield event.chain_result(chain)
+
+    # ── /公招 ──────────────────────────────────────────
+
+    @filter.command("公招")
+    async def cmd_recruit(self, event: AstrMessageEvent):
+        """公开招募标签计算。用法: /公招 标签1 标签2 ..."""
+        tags_str = event.message_str.replace("/公招", "").strip()
+        if not tags_str:
+            yield event.plain_result(
+                "博士，请输入招募标签，用空格分隔。\n"
+                "例如: /公招 狙击 输出 高级资深干员\n\n"
+                "可用标签: 狙击 术师 近卫 重装 辅助 特种 医疗 先锋 "
+                "近战位 远程位 输出 防护 生存 治疗 费用回复 支援 削弱 "
+                "控场 爆发 召唤 快速复活 位移 减速 资深干员 高级资深干员"
+            )
+            return
+
+        tags = [t.strip() for t in tags_str.split()]
+        calc = RecruitCalculator()
+        results = calc.calculate(tags)
+
+        if not results:
+            yield event.plain_result(
+                "博士，这个标签组合没有匹配的干员呢..."
+            )
+            return
+
+        lines = [f"当前招募标签: {', '.join(tags)}\n"]
+        for char, matched_tags in results[:15]:
+            stars = "★" * (char.rarity + 1)
+            lines.append(
+                f"{stars} {char.name} [{char.profession}] "
+                f"— 匹配: {', '.join(matched_tags)}"
+            )
+
+        if len(results) > 15:
+            lines.append(f"\n... 还匹配 {len(results) - 15} 名干员")
+
+        yield event.plain_result("\n".join(lines))
+
+    # ── /抽卡 ──────────────────────────────────────────
+
+    @filter.command("抽卡")
+    async def cmd_gacha(self, event: AstrMessageEvent):
+        """模拟寻访。用法: /抽卡 [十连]"""
+        msg = event.message_str.replace("/抽卡", "").strip()
+        is_ten = "十连" in msg or "10" in msg
+
+        pool = GachaPool()
+        if is_ten:
+            results = pool.ten_pull()
+        else:
+            results = [pool.single_pull()]
+
+        lines = [f"━━━ {'十连寻访' if is_ten else '单抽'}结果 ━━━"]
+        for r in results:
+            stars = "★" * r["rarity"]
+            lines.append(
+                f"{stars} {r['name']} [{r.get('profession', '')}]"
+            )
+        lines.append("━━━━━━━━━━━━━━━━━")
+        lines.append(f"当前保底计数: {pool.pity_counter}")
+
+        six_star = sum(1 for r in results if r["rarity"] == 6)
+        if six_star > 0:
+            lines.append(f"🌈 出货! {six_star}个六星!")
+
+        yield event.plain_result("\n".join(lines))
+
+    # ── /材料 ──────────────────────────────────────────
+
+    @filter.command("材料")
+    async def cmd_material(self, event: AstrMessageEvent):
+        """查询材料信息。用法: /材料 材料名"""
+        name = event.message_str.replace("/材料", "").strip()
+        if not name:
+            yield event.plain_result(
+                "博士，请输入要查询的材料名。\n用法: /材料 固源岩"
+            )
+            return
+
+        from src.material import search_material, format_material_info
+        results = search_material(name)
+        if not results:
+            yield event.plain_result(f"博士，找不到材料「{name}」")
+            return
+
+        text = format_material_info(results[0])
+        yield event.plain_result(text)
+
+    # ── /关卡 ──────────────────────────────────────────
+
+    @filter.command("关卡")
+    async def cmd_stage(self, event: AstrMessageEvent):
+        """查询关卡信息。用法: /关卡 关卡名"""
+        name = event.message_str.replace("/关卡", "").strip()
+        if not name:
+            yield event.plain_result(
+                "博士，请输入要查询的关卡名。\n用法: /关卡 1-7"
+            )
+            return
+
+        from src.stage import search_stage, format_stage_info
+        results = search_stage(name)
+        if not results:
+            yield event.plain_result(f"博士，找不到关卡「{name}」")
+            return
+
+        text = format_stage_info(results[0])
+        yield event.plain_result(text)
+
+    # ── /arkhelp ───────────────────────────────────────
+
+    @filter.command("arkhelp")
+    async def cmd_help(self, event: AstrMessageEvent):
+        """显示插件帮助"""
+        help_text = (
+            "━━━ 明日方舟插件帮助 ━━━\n"
+            "/角色 <名称>    查询干员信息\n"
+            "/公招 <标签...>  公开招募标签计算\n"
+            "/抽卡 [十连]     模拟寻访\n"
+            "/材料 <名称>     查询材料信息\n"
+            "/关卡 <编号>     查询关卡信息\n"
+            "/arkhelp         显示此帮助"
+        )
+        yield event.plain_result(help_text)
