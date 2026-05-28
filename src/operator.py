@@ -94,7 +94,9 @@ def format_operator_brief(char: dict) -> str:
 
 def _get_trait_description(char: dict) -> str:
     """提取特性描述"""
-    trait = char.get("trait", {})
+    trait = char.get("trait")
+    if trait is None:
+        return ""
     candidates = trait.get("candidates", [])
     if candidates:
         blackboard = candidates[0].get("blackboard", [])

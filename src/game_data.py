@@ -216,8 +216,8 @@ class ArkData:
         kw = keyword.lower()
         results = []
         for stage_id, stage in self.stages.items():
-            code = stage.get("code", "")
-            name = stage.get("name", "")
+            code = stage.get("code", "") or ""
+            name = stage.get("name", "") or ""
             if kw in stage_id.lower() or kw in code.lower() or kw in name:
                 results.append({"id": stage_id, **stage})
         return results

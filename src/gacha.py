@@ -1,30 +1,19 @@
 """
 卡池模拟模块
 
-模拟明日方舟标准寻访卡池的抽卡逻辑。
+模拟明日方舟标准寻访卡池抽卡逻辑。
 
 核心机制:
-  - 6★: 2% (基础)
-  - 5★: 8%
-  - 4★: 50%
-  - 3★: 40%
+  - 6★: 2% (基础), 5★: 8%, 4★: 50%, 3★: 40%
   - 软保底: 50 抽后每抽 6★ 概率 +2%
   - 硬保底: 99 抽必出 6★
   - 十连保底: 至少 1 个 5★+
+
+数据源: character_table.json (所有干员按稀有度分组)
 """
 
 import random
-from dataclasses import dataclass
 from .game_data import ArkData
-
-
-@dataclass
-class GachaResult:
-    chars: list[dict]
-    total_6star: int = 0
-    total_5star: int = 0
-    total_4star: int = 0
-    pity_counter: int = 0
 
 
 class GachaPool:
@@ -32,7 +21,7 @@ class GachaPool:
 
     SIX_STAR_BASE = 0.02
     FIVE_STAR_BASE = 0.08
-    FOUR_STAR_BASE = 0.50
+    FOUR_STAR_PROB = 0.50
     SOFT_PITY_START = 50
     HARD_PITY = 99
     SOFT_PITY_INCREMENT = 0.02
@@ -45,32 +34,13 @@ class GachaPool:
         self._load_pool()
 
     def _load_pool(self):
-        """从 gacha_table.json 加载卡池干员分布"""
-        gacha = self.data.gacha_table
-        recruit_detail = gacha.get("recruitDetail", {})
-        avail = recruit_detail.get("availChars", {})
+        """从 character_table 按稀有度分组"""
+        self._rarity_pools = {0: [], 1: [], 2: [], 3: [], 4: [], 5: []}
 
-        self._rarity_pools = {
-            2: [],  # 3★
-            3: [],  # 4★
-            4: [],  # 5★
-            5: [],  # 6★
-        }
-
-        for rarity_str, char_list in avail.items():
-            try:
-                rarity = int(rarity_str)
-            except ValueError:
-                continue
+        for char_id, char in self.data.chars.items():
+            rarity = char.get("rarity", -1)
             if rarity in self._rarity_pools:
-                self._rarity_pools[rarity] = list(char_list)
-
-        # 如果数据为空，用全干员池填充
-        if not any(self._rarity_pools.values()):
-            for cid, char in self.data.chars.items():
-                r = char.get("rarity", 0)
-                if r in self._rarity_pools:
-                    self._rarity_pools[r].append(cid)
+                self._rarity_pools[rarity].append(char_id)
 
     def single_pull(self) -> dict:
         """单抽"""
@@ -88,32 +58,41 @@ class GachaPool:
             self.pity_counter = 0
         elif roll < effective_rate + self.FIVE_STAR_BASE:
             rarity = 4  # 5★
-        elif roll < effective_rate + self.FIVE_STAR_BASE + self.FOUR_STAR_BASE:
+        elif roll < effective_rate + self.FIVE_STAR_BASE + self.FOUR_STAR_PROB:
             rarity = 3  # 4★
-        else:
+        elif roll < effective_rate + self.FIVE_STAR_BASE + self.FOUR_STAR_PROB + 0.40:
             rarity = 2  # 3★
+        else:
+            rarity = 1  # 2★
             self.pity_counter += 1
 
         return self._pick_operator(rarity)
 
     def ten_pull(self) -> list[dict]:
-        """十连（保底至少 1 个 5★+）"""
+        """十连，保底至少 1 个 5★+"""
         results = []
-        has_guarantee = False
+        has_high_rarity = False
         for _ in range(10):
             result = self.single_pull()
             results.append(result)
             if result["rarity"] >= 5:
-                has_guarantee = True
+                has_high_rarity = True
 
-        if not has_guarantee:
-            results[-1] = self._pick_operator(4)  # 替换最后一个为 5★
+        if not has_high_rarity:
+            results[-1] = self._pick_operator(4)
 
         return results
 
     def _pick_operator(self, rarity: int) -> dict:
         """从稀有度池随机选干员"""
         pool = self._rarity_pools.get(rarity, [])
+        if not pool:
+            # fallback: try adjacent rarity
+            for r in [rarity - 1, rarity + 1, rarity - 2]:
+                if r in self._rarity_pools and self._rarity_pools[r]:
+                    pool = self._rarity_pools[r]
+                    break
+
         if not pool:
             return {"name": "未知干员", "rarity": rarity + 1, "char_id": "",
                     "profession": ""}
