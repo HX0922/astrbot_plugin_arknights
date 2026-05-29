@@ -28,9 +28,28 @@ def _get_playwright():
 async def _get_browser():
     global _browser
     if _browser is None:
+        import os as _os
         pw = _get_playwright()
         p = await pw().__aenter__()
-        _browser = await p.chromium.launch(headless=True)
+        # Playwright 1.60+ uses headless shell, fall back to old chromium
+        exe = None
+        local_appdata = _os.environ.get("LOCALAPPDATA", _os.path.expanduser("~/AppData/Local"))
+        for ver in ["1223", "1179", "1150", "1124"]:
+            candidates = [
+                f"{local_appdata}/ms-playwright/chromium-{ver}/chrome-win/chrome.exe",
+                f"{local_appdata}/ms-playwright/chromium_headless_shell-{ver}/chrome-headless-shell-win64/chrome-headless-shell.exe",
+            ]
+            for c in candidates:
+                if _os.path.exists(c):
+                    exe = c
+                    break
+            if exe:
+                break
+        _browser = await p.chromium.launch(
+            headless=True,
+            executable_path=exe if exe else None,
+            args=["--no-sandbox"],
+        )
     return _browser
 
 
