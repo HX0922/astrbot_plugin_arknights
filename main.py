@@ -43,7 +43,7 @@ class ArknightsPlugin(Star):
     @filter.command("角色")
     async def cmd_character(self, event: AstrMessageEvent):
         """查询干员信息。用法: /角色 干员名"""
-        name = event.message_str.replace("/角色", "").strip()
+        name = event.message_str.replace("/角色", "").replace("角色", "").strip()
         if not name:
             yield event.plain_result(
                 "博士，请输入要查询的干员名。\n用法: /角色 阿米娅"

@@ -12,6 +12,12 @@ AstrBot html_render(tmpl_str, data) 内部处理 Jinja2 渲染 →
 import json
 from pathlib import Path
 
+PROF_CN = {
+    "WARRIOR": "近卫", "SNIPER": "狙击", "TANK": "重装",
+    "MEDIC": "医疗", "SUPPORT": "辅助", "CASTER": "术师",
+    "SPECIAL": "特种", "PIONEER": "先锋",
+}
+
 
 def _load_template(name: str) -> str:
     """加载模板文件内容"""
@@ -59,7 +65,7 @@ async def render_operator_info(star_self, char: dict, char_id: str) -> str | Non
             "en_name": char.get("appellation", "") or "",
             "number": "",
             "rarity": rarity,
-            "classes": char.get("profession", ""),
+            "classes": PROF_CN.get(char.get("profession", ""), char.get("profession", "")),
             "classes_sub": char.get("subProfessionId", ""),
             "nation": char.get("nationId", "") or "",
             "group": char.get("groupId", "") or "",
@@ -97,7 +103,9 @@ async def render_operator_info(star_self, char: dict, char_id: str) -> str | Non
         "skin": gd.get_char_image_path(char_id, "portrait"),
     }
 
-    return await _render(star_self, "operatorInfo.html", operator_data=data)
+    # Pre-serialize to avoid Jinja2 tojson unicode escaping
+    data_json = json.dumps(data, ensure_ascii=False)
+    return await _render(star_self, "operatorInfo.html", operator_data_json=data_json)
 
 
 # ── 其他模块 ──────────────────────────────────────────

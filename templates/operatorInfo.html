@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <link type="text/css" rel="styleSheet" href="font.css"/>
     <link type="text/css" rel="styleSheet" href="operatorInfo.css"/>
@@ -12,9 +11,7 @@
 </head>
 <body>
 <div id="template">
-{% raw %}
-    <div :style="{backgroundImage: `url('${gamedataPath}${data.skin}')`}" v-if="Object.keys(data).length"
-         class="background">
+    <div :style="{backgroundImage: data.skin ? `url('${data.skin}')` : ''}" v-if="Object.keys(data).length" class="background">
         <div class="left">
             <div>
                 <div class="operator-attr">
@@ -37,8 +34,7 @@
                 <div>
                     <div class="title" style="width: 120px">潜能提升</div>
                     <div class="potential" v-for="item in data.potential">
-                        <img style="width: 25px;margin-right: 10px"
-                             :src="'../rank/' + (item.potential_rank + 1) + '.png'" alt="rank">
+                        <span style="margin-right: 10px">潜能{{ item.potential_rank + 1 }}</span>
                         {{ item.potential_desc }}
                     </div>
                 </div>
@@ -65,9 +61,6 @@
             <div class="operator-name">
                 <div class="range" style="margin: 15px 0" v-html="range(data.info.range)"></div>
                 <div class="class-info">
-                    <div style="width: 60px;padding: 5px;background: #000">
-                        <img style="width: 100%" :src="'../classify/' + classesIcons[data.info.classes]" alt="classify">
-                    </div>
                     <div class="rarity">
                         <div style="font-size: 30px;display: flex"><i v-for="n in data.info.rarity">★</i></div>
                         <div>{{ data.info.classes }} - {{ data.info.classes_sub }}</div>
@@ -105,8 +98,7 @@
             <div>
                 <div class="title">基建技能</div>
                 <div class="exInfo bs" v-for="item in data.building_skills">
-                    <div style="width: 60px">精英{{ item.bs_unlocked.toString().match(/(\d+)/)[1] }}</div>
-                    <div class="bs-icon" :style="{backgroundImage: `url('${buildingSkillIconPath(item.bs_icon)}')`}"></div>
+                    <div style="width: 60px">精英{{ item.bs_elite }}</div>
                     <div style="width: 100px">{{ item.bs_name }}</div>
                     <div style="width: calc(100% - 160px);padding-left: 10px">{{ item.bs_desc }}</div>
                 </div>
@@ -114,10 +106,9 @@
             <div class="skills">
                 <div v-for="item in data.skill_list" class="skill-item">
                     <div style="width: 120px;text-align: center">
-                        <div><img style="width: 80px" :src="skillIconPath(item.skill_icon)" alt="skill"></div>
                         <div>{{ item.skill_name }}</div>
                     </div>
-                    <div style="width: calc(100% - 240px);padding: 0 10px">
+                    <div style="width: calc(100% - 130px);padding: 0 10px">
                         <div class="skill-type" style="margin-bottom: 5px">
                             <div :class="'t' + skillItem(item).sp_type">{{ spType[skillItem(item).sp_type] }}</div>
                             <div>{{ skillType[skillItem(item).skill_type] }}</div>
@@ -131,42 +122,63 @@
             </div>
         </div>
     </div>
-{% endraw %}
 </div>
 </body>
-<script src="js/vue.min.js"></script>
-<script src="js/gamedata.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.min.js"></script>
+<script>
+// Inlined gamedata.js functions
+const spType = { 'INCREASE_WITH_TIME': '自动回复', 'INCREASE_WHEN_ATTACK': '攻击回复', 'INCREASE_WHEN_TAKEN_DAMAGE': '受击回复', 1: '自动回复', 2: '攻击回复', 4: '受击回复', 8: '被动' }
+const skillType = { 'PASSIVE': '被动', 'MANUAL': '手动触发', 'AUTO': '自动触发', 0: '被动', 1: '手动触发', 2: '自动触发' }
+function colorSpan(text, tag) {
+    if (!text) return ''
+    text = text.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    text = text.replace(/\\n/g, '<br/>').replace(/\n/g, '<br/>')
+    text = text.replace(/\s/g, '')
+    text = text.replace(/\[cl/g, tag ? '<span class=\"mark\">' : '')
+    text = text.replace(/@#174CC6cle]/g, tag ? '</span>' : '')
+    return text
+}
+function range(text) {
+    if (!text) return ''
+    let lines = []
+    for (let line of text.split('\n')) {
+        let items = []
+        for (let char of line) {
+            if (char === '\u3000') items.push('<div class=\"block\"></div>')
+            else if (char === '\u25a1') items.push('<div class=\"block r\"></div>')
+            else if (char === '\u25a0') items.push('<div class=\"block s\"></div>')
+        }
+        lines.push('<div class=\"block-group\">' + items.join('') + '</div>')
+    }
+    return lines.join('')
+}
+</script>
 <script>
     const template = new Vue({
         el: '#template',
         computed: {
             lastModule() {
-                if (this.data.modules.length) {
-                    return this.data.modules[this.data.modules.length - 1].attrs
+                if (this.data.modules && this.data.modules.length) {
+                    return this.data.modules[this.data.modules.length - 1].attrs || {}
                 }
                 return {}
             }
         },
         methods: {
-            init(data) {
-                this.$set(this, 'data', data)
-            },
+            init(data) { this.$set(this, 'data', data) },
             attr(name) {
-                return this.data.detail[name]
-                    + (this.data.trust[name] ? `<span class="a">+${this.data.trust[name]}</span>` : '')
-                    + (this.lastModule[name] ? `<span class="b">+${this.lastModule[name]}</span>` : '').replace(/\+-/g, '-')
+                const v = this.data.detail[name] || 0
+                const t = this.data.trust && this.data.trust[name] ? '<span class=\"a\">+' + this.data.trust[name] + '</span>' : ''
+                const m = this.lastModule[name] ? '<span class=\"b\">+' + this.lastModule[name] + '</span>' : ''
+                return (v + t + m).replace(/\+-/g, '-')
             },
             skillItem(item) {
-                const skills = this.data.skills_desc[item.skill_no]
-                return skills[skills.length - 1]
+                const skills = this.data.skills_desc && this.data.skills_desc[item.skill_no]
+                return skills && skills.length ? skills[skills.length - 1] : {}
             }
         },
-        data() {
-            return { data: {} }
-        },
-        mounted() {
-            this.init({{ operator_data|tojson|safe }})
-        }
+        data() { return { data: {} } },
+        mounted() { this.init({{ operator_data_json|safe }}) }
     })
 </script>
 </html>
