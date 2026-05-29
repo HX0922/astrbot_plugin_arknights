@@ -10,67 +10,75 @@
     <title>template</title>
 </head>
 <body>
-{% if data %}
-<div id="template">
-    <div class="background" style="background-image: url('{{ data.skin_path }}')"></div>
+<div id="template" v-if="Object.keys(data).length">
+    <div class="background" :style="{backgroundImage: `url('${gamedataPath}${data.skin}')`}"></div>
     <div style="position: relative;z-index: 1">
         <div class="title">精英化</div>
         <div class="evolve-block">
-            {% for level, costs in data.evolve_costs.items() %}
-            <div class="evolve-detail">
+            <div class="evolve-detail" v-for="(costs, level) in data.evolve_costs">
                 <div style="display: flex">
-                    <img class="evolve-icon" src="..//level/evolve{{ level }}.png" alt="evolve">
-                    精英{% if level == '1' %}一{% elif level == '2' %}二{% endif %}
+                    <img class="evolve-icon" :src="'..//level/evolve' + level + '.png'"
+                         alt="evolve">
+                    精英{{ {1: '一', 2: '二'}[level] }}
                 </div>
                 <div class="evolve-costs">
-                    {% for item in costs %}
-                    <div class="materiel" use="{{ item.use_number }}">
-                        <img src="{{ item.material_icon_path }}" alt="{{ item.material_name }}">
+                    <div class="materiel" :use="item.use_number" v-for="item in costs">
+                        <img :src="itemIconPath(item.material_icon)"
+                             :alt="item.material_name">
                     </div>
-                    {% endfor %}
                 </div>
             </div>
-            {% endfor %}
         </div>
         <div class="title">技能升级</div>
         <div class="skills-level-up">
             <div class="skills_cost">
-                {% for level, items in data.skills_cost.common.items() %}
-                <div class="common-items">
+                <div v-for="(items, level) in data.skills_cost.common" class="common-items">
                     <div>等级{{ level }}</div>
-                    {% for item in items %}
-                    <div class="materiel" use="{{ item.use_number }}">
-                        <img src="{{ item.material_icon_path }}" alt="{{ item.material_name }}">
+                    <div class="materiel" :use="item.use_number" v-for="item in items">
+                        <img :src="itemIconPath(item.material_icon)"
+                             :alt="item.material_name">
                     </div>
-                    {% endfor %}
                 </div>
-                {% endfor %}
             </div>
             <div class="skills_mastery">
-                {% for item in data.skills %}
-                <div style="margin: 0 10px">
+                <div v-for="item in data.skills" style="margin: 0 10px">
                     <div>
                         <img style="width: 70px;margin-right: 20px"
-                             src="{{ item.skill_icon_path }}" alt="skill">
+                             :src="skillIconPath(item.skill_icon)" alt="skill">
                         {{ item.skill_name }}
                     </div>
-                    {% for level, cost in data.skills_cost[item.skill_no].items() %}
-                    <div class="cost-items">
+                    <div class="cost-items" v-for="(cost, level) in data.skills_cost[item.skill_no]">
                         <div class="mastery-icon"
-                             style="background-image: url(..//level/master{{ level|int - 7 }}.png)"></div>
-                        {% for material in cost %}
-                        <div class="materiel" use="{{ material.use_number }}">
-                            <img src="{{ material.material_icon_path }}" alt="{{ material.material_name }}">
+                             :style="{backgroundImage: 'url(..//level/master' + (level - 7) + '.png)'}"></div>
+                        <div class="materiel" :use="item.use_number" v-for="item in cost">
+                            <img :src="itemIconPath(item.material_icon)"
+                                 :alt="item.material_name">
                         </div>
-                        {% endfor %}
                     </div>
-                    {% endfor %}
                 </div>
-                {% endfor %}
             </div>
         </div>
     </div>
 </div>
-{% endif %}
 </body>
+<script src="js/vue.min.js"></script>
+<script src="js/gamedata.js"></script>
+<script>
+    const template = new Vue({
+        el: '#template',
+        methods: {
+            init(data) {
+                this.$set(this, 'data', data)
+            }
+        },
+        data() {
+            return {
+                data: {}
+            }
+        },
+        mounted() {
+            window.init = this.init
+        }
+    })
+</script>
 </html>

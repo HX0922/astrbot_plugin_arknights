@@ -11,48 +11,34 @@
 </head>
 <body>
 <div id="template">
-    {% if data %}
-    <div>
+    <template v-if="Object.keys(data).length">
         <div style="display: flex;align-items: center;">
             <img style="width: 100px;margin-right: 20px"
-                 src="{{ data.info.material_icon_path }}" alt="material">
+                 :src="'../../../resource/gamedata/item/' + data.info.material_icon + '.png'" alt="material">
             <div class="material-name">
                 <div style="font-size: 40px;margin-bottom: 10px">{{ data.info.material_name }}</div>
                 <div>{{ data.info.material_desc }}</div>
             </div>
         </div>
-        {% if data.children %}
-        <div class="title">加工站合成路线</div>
-        <div>
-            <div class="material-tree main{% if data.children %} parent{% endif %}">
-                <div class="material">
-                    <img style="margin-right: 10px"
-                         src="{{ data.info.material_icon_path }}" alt="material">
-                </div>
-                {% for item in data.children %}
-                <div class="children">
-                    <div class="material-tree{% if item.children_list %} parent{% endif %}{% if data.children|length == 1 %} lonely{% endif %}">
-                        <div class="material sub-item">
-                            <img src="{{ item.material_icon_path }}" alt="material">
-                            <span class="num">{{ item.use_number }}</span>
-                            <span>{{ item.material_name }}</span>
-                        </div>
-                        {% if item.children_rendered %}
-                        {{ item.children_rendered|safe }}
-                        {% endif %}
+        <template v-if="data.children.length">
+            <div class="title">加工站合成路线</div>
+            <div>
+                <div class="material-tree main" :class="{ parent: data.children.length }"
+                     v-if="Object.keys(data).length">
+                    <div class="material">
+                        <img style="margin-right: 10px"
+                             :src="'../../../resource/gamedata/item/' + data.info.material_icon + '.png'"
+                             alt="material">
                     </div>
+                    <item-children :list="data.children"></item-children>
                 </div>
-                {% endfor %}
             </div>
-        </div>
-        {% endif %}
-        {% if data.recommend %}
-        <div class="title">推荐刷取地图</div>
+        </template>
+        <div class="title" v-if="data.recommend.length">推荐刷取地图</div>
         <p class="description mb-extra">排序算法综合考虑刷取效率、副产物价值、掉落体验三项指标，为博士推荐最优关卡。</p>
         <div class="table-container">
-            {% for material in data.recommend %}
-            <div class="table-wrapper">
-                <div class="sub_title">{{ material.name }}</div>
+            <div v-for="material in data.recommend" class="table-wrapper">
+                <div class="sub_title">{{material.name}}</div>
                 <table class="recommend-table">
                     <tr>
                         <td>关卡编号</td>
@@ -61,61 +47,97 @@
                         <td>掉落概率</td>
                         <td>置信度</td>
                     </tr>
-                    {% for stage in material.stages %}
-                    <tr class="recommend-stage">
+                    <tr class="recommend-stage" v-for="stage in material.stages">
                         <td>{{ stage.stageId }}</td>
                         <td>{{ stage.stageEfficiency }}</td>
                         <td>{{ stage.apExpect }}</td>
                         <td>{{ stage.knockRating }}</td>
                         <td>{{ stage.sampleConfidence }}</td>
                     </tr>
-                    {% endfor %}
                 </table>
             </div>
-            {% endfor %}
         </div>
         <p class="description">数据来源：企鹅物流数据统计（https://penguin-stats.cn）</p>
         <p class="description">数据计算：明日方舟一图流（https://yituliu.site）</p>
-        {% endif %}
-        {% if data.source.main or data.source.act %}
-        <div class="title">地图掉落信息</div>
-        <div class="source-info">
-            {% if data.source.main %}
-            <div>
-                <div class="sub_title">主线掉落</div>
-                <div class="source-detail">
-                    {% for item in data.source.main %}
-                    <div>
-                        <div>
-                            <span rate="{{ item.rate }}">{{ item.rate_name }}</span>
+        <template v-if="Object.keys(data.source.main).length || Object.keys(data.source.act).length">
+            <div class="title">地图掉落信息</div>
+            <div class="source-info">
+                <div v-if="Object.keys(data.source.main).length">
+                    <div class="sub_title">主线掉落</div>
+                    <div class="source-detail">
+                        <div v-for="item in data.source.main">
+                            <div>
+                                <span :rate="item.rate">{{ rateFormat[item.rate] }}</span>
+                            </div>
+                            <div>{{ item.code }}</div>
+                            <div>{{ item.name }}</div>
                         </div>
-                        <div>{{ item.code }}</div>
-                        <div>{{ item.name }}</div>
                     </div>
-                    {% endfor %}
+                </div>
+                <div v-if="Object.keys(data.source.act).length">
+                    <div class="sub_title">活动掉落</div>
+                    <div class="source-detail">
+                        <div v-for="item in data.source.act">
+                            <div>
+                                <span :rate="item.rate">{{ rateFormat[item.rate] }}</span>
+                            </div>
+                            <div>{{ item.code }}</div>
+                            <div>{{ item.name }}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            {% endif %}
-            {% if data.source.act %}
-            <div>
-                <div class="sub_title">活动掉落</div>
-                <div class="source-detail">
-                    {% for item in data.source.act %}
-                    <div>
-                        <div>
-                            <span rate="{{ item.rate }}">{{ item.rate_name }}</span>
-                        </div>
-                        <div>{{ item.code }}</div>
-                        <div>{{ item.name }}</div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-        </div>
-        {% endif %}
-    </div>
-    {% endif %}
+        </template>
+    </template>
 </div>
 </body>
+<script src="js/vue.min.js"></script>
+<script>
+    Vue.component('item-children', {
+        template: '' +
+            '<div class="children">' +
+            '   <div class="material-tree" :class="{ parent: item.children.length, lonely: list.length === 1 }" v-for="item in list">' +
+            '       <div class="material sub-item">' +
+            '           <img :src="\'../../../resource/gamedata/item/\' + item.material_icon + \'.png\'" alt="material">' +
+            '           <span class="num">{{ item.use_number }}</span>' +
+            '           <span>{{ item.material_name }}</span>' +
+            '       </div>' +
+            '       <item-children v-if="item.children.length" :list="item.children"></item-children>' +
+            '   </div>' +
+            '</div>',
+        props: ['list']
+    })
+    const template = new Vue({
+        el: '#template',
+        methods: {
+            init(data) {
+                this.$set(this, 'data', data)
+            }
+        },
+        data() {
+            return {
+                data: {},
+                stageType: {
+                    'MAIN': '主线',
+                    'SUB': '支线',
+                    'SPECIAL_STORY': '故事集',
+                    'DAILY': '日常',
+                    'ACTIVITY': '活动',
+                    'CAMPAIGN': '剿灭',
+                    'CLIMB_TOWER': '保全派驻'
+                },
+                rateFormat: {
+                    'SOMETIMES': '罕见',
+                    'OFTEN': '小概率',
+                    'USUAL': '中概率',
+                    'ALMOST': '大概率',
+                    'ALWAYS': '固定'
+                }
+            }
+        },
+        mounted() {
+            window.init = this.init
+        }
+    })
+</script>
 </html>

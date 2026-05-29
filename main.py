@@ -88,19 +88,15 @@ class ArknightsPlugin(Star):
         char = data.chars[char_ids[0]]
         text = format_operator_brief(char)
 
-        # 优先使用 HTML 模板渲染为图片
+        # 使用原版 AmiyaBot HTML 模板渲染
         try:
-            img = render_operator_info(self.context, char, char_ids[0])
-            if img:
-                chain = [Plain(text), Image.fromFileSystem(img)]
-            else:
-                chain = [Plain(text)]
+            img = await render_operator_info(self.context, char, char_ids[0])
         except Exception:
-            img_path = data.get_char_image_path(char_ids[0], "portrait")
-            chain = [Plain(text)]
-            if img_path:
-                chain.append(Image.fromFileSystem(img_path))
+            img = None
 
+        chain = [Plain(text)]
+        if img:
+            chain.append(Image.fromFileSystem(img))
         yield event.chain_result(chain)
 
     # ── /公招 ──────────────────────────────────────────

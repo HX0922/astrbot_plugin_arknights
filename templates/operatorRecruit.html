@@ -12,26 +12,39 @@
 <body>
 <div id="template">
     <div class="group-list">
-        {% for group in data.groups %}
-        <div>
+        <div v-for="group in data.groups">
             <div>
-                {% for tag in group.tags %}
-                <span class="tag">{{ tag }}</span>
-                {% endfor %}
+                <span class="tag" v-for="tag in group.tags">{{ tag }}</span>
             </div>
             <div class="operator-list">
-                {% for item in group.operators %}
-                <div class="operator">
-                    <img src="{{ item.portrait_path }}"
-                         class="rarity{{ item.operator_rarity }}"
-                         alt="{{ item.operator_name }}">
+                <div v-for="item in group.operators" class="operator">
+                    <img :src="'../../../resource/gamedata/portrait/' + item.operator_id + '%231.png'"
+                         :class="'rarity' + item.operator_rarity"
+                         :alt="item.operator_name">
                     <span>{{ item.operator_name }}</span>
                 </div>
-                {% endfor %}
             </div>
         </div>
-        {% endfor %}
     </div>
 </div>
 </body>
+<script src="js/vue.min.js"></script>
+<script>
+    const template = new Vue({
+        el: '#template',
+        methods: {
+            init(data) {
+                this.$set(this, 'data', data)
+            }
+        },
+        data() {
+            return {
+                data: {}
+            }
+        },
+        mounted() {
+            window.init = this.init
+        }
+    })
+</script>
 </html>

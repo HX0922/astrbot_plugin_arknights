@@ -11,15 +11,14 @@
 </head>
 <body>
 <div id="template">
-    {% if data %}
-    <div>
+    <div v-if="Object.keys(data).length">
         <div class="avatar">
-            <img src="{{ data.enemy_icon_path }}" alt="enemy"
-                 onerror="this.src='./img/enemy.png'">
+            <img :src="gamedataPath + '/' + data.info.enemyId + '.png'" alt="enemy"
+                 onerror="hideImage(this)">
             <div class="name">
                 <div class="tags">
                     <span style="font-size: 40px">{{ data.info.name }}</span>
-                    <span class="tag {{ data.info.enemyLevel }}">{{ data.info.level_name }}</span>
+                    <span class="tag" :class="data.info.enemyLevel">{{ level[data.info.enemyLevel] }}</span>
                     <!--
                     <span class="tag race" v-if="data.info.enemyRace">{{ data.info.enemyRace }}</span>
                     <span class="tag attackType" v-for="n in data.info.attackType.split(' ')">{{ n }}</span>
@@ -32,31 +31,29 @@
             </div>
         </div>
         <div>
-            {% if data.link_items %}
-            <div class="title">关联单位</div>
-            <div style="display: flex; flex-wrap: wrap;">
-                {% for item in data.link_items %}
-                <div style="display: flex; margin-right: 30px;">
-                    <img src="{{ item.icon_path }}" alt="enemy" style="width: 100px"
-                         onerror="this.src='./img/enemy.png'">
-                    <div style="padding-top: 10px;">
-                        <span style="margin: 0;" class="tag {{ item.class_level }}">{{ item.level_name }}</span>
-                        <div style="margin-top: 10px">{{ item.info.name }}</div>
+            <template v-if="data.link_items.length">
+                <div class="title">关联单位</div>
+                <div style="display: flex; flex-wrap: wrap;">
+                    <div style="display: flex; margin-right: 30px;"
+                         v-for="item in data.link_items">
+                        <img :src="gamedataPath + '/' + item.info.enemyId + '.png'" alt="enemy" style="width: 100px"
+                             onerror="hideImage(this)">
+                        <div style="padding-top: 10px;">
+                                <span style="margin: 0;" class="tag"
+                                      :class="data.info.enemyLevel">{{ level[data.info.enemyLevel] }}</span>
+                            <div style="margin-top: 10px">{{ item.info.name }}</div>
+                        </div>
                     </div>
                 </div>
-                {% endfor %}
-            </div>
-            {% endif %}
+            </template>
             <div class="title">能力</div>
             <div>
-                {% for item in data.info.abilityList %}
-                <div class="ability-{{ item.textFormat }}">{{ item.ability_html|safe }}</div>
-                {% endfor %}
+                <div v-for="item in data.info.abilityList" :class="'ability-' + item.textFormat"
+                     v-html="ability(item.text)"></div>
             </div>
             <div class="title">属性</div>
             <div class="attrs-content">
-                {% for level, item in data.attrs.items() %}
-                <div>
+                <div v-for="(item, level) in data.attrs">
                     <div style="margin-bottom: 5px">等级{{ level }}</div>
                     <div class="attrs">
                         <div class="attr" title="生命值">{{ item.maxHp }}</div>
@@ -65,46 +62,82 @@
                         <div class="attr" title="魔法抗性">{{ item.magicResistance }}</div>
                         <div class="attr" title="移动速度">{{ item.moveSpeed }}</div>
                         <div class="attr" title="攻击速度">{{ item.baseAttackTime }}</div>
-                        <div class="attr" title="每秒回血">{{ item.hpRecoveryPerSec or 0 }}</div>
+                        <div class="attr" title="每秒回血">{{ item.hpRecoveryPerSec || 0 }}</div>
                         <div class="attr" title="重量等级">{{ item.massLevel }}</div>
                         <div class="attr" title="攻击距离">{{ item.rangeRadius }}</div>
                         <div class="attr" title="进点损失">{{ item.lifePointReduce }}</div>
                     </div>
                     <div class="attrs" style="margin-top: 10px">
-                        <div class="attr{% if item.stunImmune %} on{% endif %}" title="晕眩免疫">
-                            <span>{% if item.stunImmune %}有{% else %}无{% endif %}</span>
+                        <div class="attr" title="晕眩免疫" :class="{ on: item.stunImmune }">
+                            <span>{{ item.stunImmune ? '有' : '无' }}</span>
                         </div>
-                        <div class="attr{% if item.silenceImmune %} on{% endif %}" title="沉默免疫">
-                            <span>{% if item.silenceImmune %}有{% else %}无{% endif %}</span>
+                        <div class="attr" title="沉默免疫" :class="{ on: item.silenceImmune }">
+                            <span>{{ item.silenceImmune ? '有' : '无' }}</span>
                         </div>
-                        <div class="attr{% if item.sleepImmune %} on{% endif %}" title="睡眠免疫">
-                            <span>{% if item.sleepImmune %}有{% else %}无{% endif %}</span>
+                        <div class="attr" title="睡眠免疫" :class="{ on: item.sleepImmune }">
+                            <span>{{ item.sleepImmune ? '有' : '无' }}</span>
                         </div>
-                        <div class="attr{% if item.frozenImmune %} on{% endif %}" title="冷冻免疫">
-                            <span>{% if item.frozenImmune %}有{% else %}无{% endif %}</span>
+                        <div class="attr" title="冷冻免疫" :class="{ on: item.frozenImmune }">
+                            <span>{{ item.frozenImmune ? '有' : '无' }}</span>
                         </div>
-                        <div class="attr{% if item.levitateImmune %} on{% endif %}" title="浮空免疫">
-                            <span>{% if item.levitateImmune %}有{% else %}无{% endif %}</span>
+                        <div class="attr" title="浮空免疫" :class="{ on: item.levitateImmune }">
+                            <span>{{ item.levitateImmune ? '有' : '无' }}</span>
                         </div>
-                        <div class="attr{% if item.disarmedCombatImmune %} on{% endif %}" title="缴械免疫">
-                            <span>{% if item.disarmedCombatImmune %}有{% else %}无{% endif %}</span>
+                        <div class="attr" title="缴械免疫" :class="{ on: item.disarmedCombatImmune }">
+                            <span>{{ item.disarmedCombatImmune ? '有' : '无' }}</span>
                         </div>
-                        <div class="attr{% if item.fearedImmune %} on{% endif %}" title="恐惧免疫">
-                            <span>{% if item.fearedImmune %}有{% else %}无{% endif %}</span>
+                        <div class="attr" title="恐惧免疫" :class="{ on: item.fearedImmune }">
+                            <span>{{ item.fearedImmune ? '有' : '无' }}</span>
                         </div>
-                        <div class="attr{% if item.palsyImmune %} on{% endif %}" title="麻痹免疫">
-                            <span>{% if item.palsyImmune %}有{% else %}无{% endif %}</span>
+                        <div class="attr" title="麻痹免疫" :class="{ on: item.palsyImmune }">
+                            <span>{{ item.palsyImmune ? '有' : '无' }}</span>
                         </div>
-                        <div class="attr{% if item.attractImmune %} on{% endif %}" title="诱导免疫">
-                            <span>{% if item.attractImmune %}有{% else %}无{% endif %}</span>
+                        <div class="attr" title="诱导免疫" :class="{ on: item.attractImmune }">
+                            <span>{{ item.attractImmune ? '有' : '无' }}</span>
                         </div>
                     </div>
                 </div>
-                {% endfor %}
             </div>
         </div>
     </div>
-    {% endif %}
 </div>
 </body>
+<script src="js/vue.min.js"></script>
+<script>
+    const gamedataPath = '../../../resource/gamedata/enemy'
+
+    function hideImage(e) {
+        e.src = './img/enemy.png'
+    }
+
+    const template = new Vue({
+        el: '#template',
+        methods: {
+            init(data) {
+                this.$set(this, 'data', data)
+            },
+            ability(text) {
+                return text
+                    .replace(/<\$ba.+?>/g, '<span class="mark"><u>')
+                    .replace(/<@eb.key>/g, '<span class="mark">')
+                    .replace(/<\/>/g, '</u></span>')
+                    .replace(/；/g, '<br/>')
+                    .replace(/;/g, '<br/>')
+            }
+        },
+        data() {
+            return {
+                data: {},
+                level: {
+                    'NORMAL': '普通',
+                    'ELITE': '精英',
+                    'BOSS': 'BOSS',
+                }
+            }
+        },
+        mounted() {
+            window.init = this.init
+        }
+    })
+</script>
 </html>
