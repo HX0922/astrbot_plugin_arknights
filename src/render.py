@@ -156,7 +156,7 @@ async def render_operator_info(star_self, char: dict, char_id: str) -> str | Non
         "skill_list": skill_list,
         "skills_desc": skills_desc,
         "modules": [],
-        "skin": _portrait_url(char_id),
+        "skin": _portrait_b64(char_id),
     }
 
     data_json = json.dumps(data, ensure_ascii=False)
@@ -198,6 +198,15 @@ def _load_skill_json(gd, skill_id: str) -> dict:
         return {}
 
 
-def _portrait_url(char_id: str) -> str:
-    """干员立绘 HTTP URL"""
-    return f"https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/{char_id}.png"
+def _portrait_b64(char_id: str) -> str:
+    """干员立绘 — 本地文件 base64 或 HTTP URL"""
+    import base64 as b64
+    # 尝试本地文件
+    for suffix in ["_2", "_1", ""]:
+        path = Path(__file__).resolve().parent.parent / "data" / "ArknightsGameResource" / "portrait" / f"{char_id}{suffix}.png"
+        if path.exists() and path.stat().st_size > 1000:
+            with open(path, "rb") as f:
+                return f"data:image/png;base64,{b64.b64encode(f.read()).decode()}"
+
+    # 回退 HTTP URL
+    return f"https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/{char_id}_1.png"
