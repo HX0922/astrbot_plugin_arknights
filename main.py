@@ -19,6 +19,7 @@ from .src.enemy import search_enemy, format_enemy_brief, format_enemy_index_list
 from .src.state import check_wait, wait_for
 from .src.fuzzy import FuzzyMatcher
 from .src.render import render_operator_info
+from .src.resource import initialize_resource, download_portrait
 
 
 class ArknightsPlugin(Star):
@@ -29,6 +30,7 @@ class ArknightsPlugin(Star):
         """插件激活时加载游戏数据"""
         logger.info("[Arknights] 正在初始化插件...")
         try:
+            initialize_resource()
             ArkData()  # 触发数据预加载
             logger.info("[Arknights] 游戏数据加载完成")
         except Exception as e:
