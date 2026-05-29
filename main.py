@@ -90,13 +90,16 @@ class ArknightsPlugin(Star):
 
         # 使用原版 AmiyaBot HTML 模板渲染
         try:
-            img = await render_operator_info(self.context, char, char_ids[0])
-        except Exception:
+            logger.info(f"[Arknights] 开始渲染 HTML 模板 for {char.get('name', '?')}")
+            img = await render_operator_info(self, char, char_ids[0])
+            logger.info(f"[Arknights] 渲染结果: {img}")
+        except Exception as e:
+            logger.error(f"[Arknights] HTML 渲染失败: {e}", exc_info=True)
             img = None
 
         chain = [Plain(text)]
         if img:
-            chain.append(Image.fromFileSystem(img))
+            chain.append(Image(file=img))  # URL from html_render
         yield event.chain_result(chain)
 
     # ── /公招 ──────────────────────────────────────────

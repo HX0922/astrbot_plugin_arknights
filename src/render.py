@@ -22,20 +22,28 @@ def _load_template(name: str) -> str:
         return f.read()
 
 
-async def _render(context, template_name: str, **data) -> str | None:
+async def _render(star_self, template_name: str, **data) -> str | None:
     """异步渲染模板为图片路径"""
     try:
         tmpl = _load_template(template_name)
         if not tmpl:
+            from astrbot.api import logger
+            logger.error(f"[Arknights] 模板文件未找到: {template_name}")
             return None
-        return await context.html_render(tmpl, data)
-    except Exception:
+        from astrbot.api import logger
+        logger.info(f"[Arknights] 模板 {template_name} 加载成功 ({len(tmpl)} chars), 准备调用 html_render")
+        result = await star_self.html_render(tmpl, data)
+        logger.info(f"[Arknights] html_render 返回: {result}")
+        return result
+    except Exception as e:
+        from astrbot.api import logger
+        logger.error(f"[Arknights] _render 失败 ({template_name}): {e}", exc_info=True)
         return None
 
 
 # ── 干员 ──────────────────────────────────────────────
 
-async def render_operator_info(context, char: dict, char_id: str) -> str | None:
+async def render_operator_info(star_self, char: dict, char_id: str) -> str | None:
     """干员信息卡片"""
     from .game_data import ArkData
     gd = ArkData()
@@ -89,29 +97,29 @@ async def render_operator_info(context, char: dict, char_id: str) -> str | None:
         "skin": gd.get_char_image_path(char_id, "portrait"),
     }
 
-    return await _render(context, "operatorInfo.html", operator_data=data)
+    return await _render(star_self, "operatorInfo.html", operator_data=data)
 
 
 # ── 其他模块 ──────────────────────────────────────────
 
-async def render_skills_detail(context, char: dict, char_id: str) -> str | None:
+async def render_skills_detail(star_self, char: dict, char_id: str) -> str | None:
     return None  # TODO
 
-async def render_recruit(context, recruit_data: dict) -> str | None:
-    return await _render(context, "operatorRecruit.html", **recruit_data)
+async def render_recruit(star_self, recruit_data: dict) -> str | None:
+    return await _render(star_self, "operatorRecruit.html", **recruit_data)
 
-async def render_material(context, item: dict) -> str | None:
-    return await _render(context, "material.html",
+async def render_material(star_self, item: dict) -> str | None:
+    return await _render(star_self, "material.html",
         name=item.get("name", ""), description=item.get("description", ""),
         usage=item.get("usage", ""), obtain=item.get("obtainApproach", ""))
 
-async def render_stage(context, stage: dict) -> str | None:
-    return await _render(context, "stage.html",
+async def render_stage(star_self, stage: dict) -> str | None:
+    return await _render(star_self, "stage.html",
         code=stage.get("code", ""), name=stage.get("name", ""),
         ap_cost=stage.get("apCost", 0))
 
-async def render_enemy(context, enemy: dict) -> str | None:
-    return await _render(context, "enemyDetail.html", **enemy)
+async def render_enemy(star_self, enemy: dict) -> str | None:
+    return await _render(star_self, "enemyDetail.html", **enemy)
 
-async def render_enemy_index(context, enemies: list[dict]) -> str | None:
-    return await _render(context, "enemyIndex.html", items=enemies, count=len(enemies))
+async def render_enemy_index(star_self, enemies: list[dict]) -> str | None:
+    return await _render(star_self, "enemyIndex.html", items=enemies, count=len(enemies))
