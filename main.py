@@ -17,6 +17,7 @@ from src.recruit import RecruitCalculator
 from src.gacha import GachaPool
 from src.enemy import search_enemy, format_enemy_brief, format_enemy_index_list
 from src.state import check_wait, wait_for
+from src.fuzzy import FuzzyMatcher
 
 
 class ArknightsPlugin(Star):
@@ -50,6 +51,20 @@ class ArknightsPlugin(Star):
 
         data = ArkData()
         char_ids = data.resolve_char(name)
+
+        # 模糊匹配回退
+        if not char_ids:
+            matcher = FuzzyMatcher()
+            all_names = {cid: c["name"] for cid, c in data.chars.items()}
+            matches = matcher.match(name, list(all_names.values()))
+            if matches:
+                # 取最佳匹配的名称 → ID
+                best_name = matches[0][0]
+                for cid, cname in all_names.items():
+                    if cname == best_name:
+                        char_ids = [cid]
+                        break
+
         if not char_ids:
             yield event.plain_result(
                 f"博士，找不到名为「{name}」的干员，请检查名称。"
@@ -160,6 +175,20 @@ class ArknightsPlugin(Star):
 
         from src.material import search_material, format_material_info
         results = search_material(name)
+
+        # 模糊回退
+        if not results:
+            matcher = FuzzyMatcher()
+            items = ArkData().items
+            all_names = {iid: it["name"] for iid, it in items.items() if "name" in it}
+            matches = matcher.match(name, list(all_names.values()))
+            if matches:
+                best = matches[0][0]
+                for iid, iname in all_names.items():
+                    if iname == best:
+                        results = [{"id": iid, **items[iid]}]
+                        break
+
         if not results:
             yield event.plain_result(f"博士，找不到材料「{name}」")
             return
