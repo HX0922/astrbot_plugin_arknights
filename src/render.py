@@ -156,7 +156,7 @@ async def render_operator_info(star_self, char: dict, char_id: str) -> str | Non
         "skill_list": skill_list,
         "skills_desc": skills_desc,
         "modules": [],
-        "skin": gd.get_char_image_path(char_id, "portrait"),
+        "skin": _portrait_url(char_id),
     }
 
     data_json = json.dumps(data, ensure_ascii=False)
@@ -196,3 +196,8 @@ def _load_skill_json(gd, skill_id: str) -> dict:
         return gd._load_json("skill_table.json").get(skill_id, {})
     except Exception:
         return {}
+
+
+def _portrait_url(char_id: str) -> str:
+    """干员立绘 HTTP URL"""
+    return f"https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/{char_id}.png"

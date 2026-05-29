@@ -50,7 +50,7 @@ body{margin:0;font-family:"Microsoft YaHei","PingFang SC",sans-serif}
 <body>
 <div id="template">
 {% raw %}
-    <div class="background" v-if="Object.keys(data).length">
+    <div class="background" v-if="Object.keys(data).length" :style="data.skin ? {backgroundImage: 'url('+data.skin+')',backgroundSize:'auto calc(100% - 200px)',backgroundPosition:'bottom 25px left 25%',backgroundRepeat:'no-repeat'} : {}">
         <div class="left"><div>
             <div class="operator-attr">
                 <div class="attr" title="最大生命值"><div v-html="attr('maxHp')"></div></div>
