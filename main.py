@@ -11,13 +11,13 @@ from astrbot.api.star import Context, Star
 from astrbot.api.message_components import Plain, Image
 from astrbot.api import logger
 
-from src.game_data import ArkData
-from src.operator import format_operator_brief
-from src.recruit import RecruitCalculator
-from src.gacha import GachaPool
-from src.enemy import search_enemy, format_enemy_brief, format_enemy_index_list
-from src.state import check_wait, wait_for
-from src.fuzzy import FuzzyMatcher
+from .src.game_data import ArkData
+from .src.operator import format_operator_brief
+from .src.recruit import RecruitCalculator
+from .src.gacha import GachaPool
+from .src.enemy import search_enemy, format_enemy_brief, format_enemy_index_list
+from .src.state import check_wait, wait_for
+from .src.fuzzy import FuzzyMatcher
 
 
 class ArknightsPlugin(Star):
@@ -193,7 +193,7 @@ class ArknightsPlugin(Star):
             )
             return
 
-        from src.material import search_material, format_material_info
+        from .src.material import search_material, format_material_info
         results = search_material(name)
 
         # 模糊回退
