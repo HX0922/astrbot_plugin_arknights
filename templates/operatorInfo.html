@@ -12,37 +12,37 @@
 </head>
 <body>
 <div id="template">
-    <div :style="{backgroundImage: `url('${gamedataPath}${data.skin}')`}" v-if="Object.keys(data).length"
-         class="background">
+    {% if data and data.info %}
+    <div style="background-image: url('{{ background_url }}')" class="background">
         <div class="left">
             <div>
                 <div class="operator-attr">
                     <div class="attr" title="最大生命值">
-                        <div v-html="attr('maxHp')"></div>
+                        <div>{{ data.detail.maxHp }}{% if data.detail.maxHp_trust %}<span class="a">{{ data.detail.maxHp_trust }}</span>{% endif %}{% if data.detail.maxHp_module %}<span class="b">{{ data.detail.maxHp_module }}</span>{% endif %}</div>
                     </div>
                     <div class="attr" title="攻击力">
-                        <div v-html="attr('atk')"></div>
+                        <div>{{ data.detail.atk }}{% if data.detail.atk_trust %}<span class="a">{{ data.detail.atk_trust }}</span>{% endif %}{% if data.detail.atk_module %}<span class="b">{{ data.detail.atk_module }}</span>{% endif %}</div>
                     </div>
                     <div class="attr" title="防御力">
-                        <div v-html="attr('def')"></div>
+                        <div>{{ data.detail.def }}{% if data.detail.def_trust %}<span class="a">{{ data.detail.def_trust }}</span>{% endif %}{% if data.detail.def_module %}<span class="b">{{ data.detail.def_module }}</span>{% endif %}</div>
                     </div>
                     <div class="attr" title="魔法抗性">
-                        <div v-html="attr('magicResistance')"></div>
+                        <div>{{ data.detail.magicResistance }}{% if data.detail.magicResistance_trust %}<span class="a">{{ data.detail.magicResistance_trust }}</span>{% endif %}{% if data.detail.magicResistance_module %}<span class="b">{{ data.detail.magicResistance_module }}</span>{% endif %}</div>
                     </div>
                     <div class="attr" title="攻击速度">
-                        <div v-html="attr('attackSpeed')"></div>
+                        <div>{{ data.detail.attackSpeed }}{% if data.detail.attackSpeed_trust %}<span class="a">{{ data.detail.attackSpeed_trust }}</span>{% endif %}{% if data.detail.attackSpeed_module %}<span class="b">{{ data.detail.attackSpeed_module }}</span>{% endif %}</div>
                     </div>
                     <div class="attr" title="攻击间隔">
-                        <div v-html="attr('baseAttackTime')"></div>
+                        <div>{{ data.detail.baseAttackTime }}{% if data.detail.baseAttackTime_trust %}<span class="a">{{ data.detail.baseAttackTime_trust }}</span>{% endif %}{% if data.detail.baseAttackTime_module %}<span class="b">{{ data.detail.baseAttackTime_module }}</span>{% endif %}</div>
                     </div>
                     <div class="attr" title="阻挡数">
-                        <div v-html="attr('blockCnt')"></div>
+                        <div>{{ data.detail.blockCnt }}{% if data.detail.blockCnt_trust %}<span class="a">{{ data.detail.blockCnt_trust }}</span>{% endif %}{% if data.detail.blockCnt_module %}<span class="b">{{ data.detail.blockCnt_module }}</span>{% endif %}</div>
                     </div>
                     <div class="attr" title="部署费用">
-                        <div v-html="attr('cost')"></div>
+                        <div>{{ data.detail.cost }}{% if data.detail.cost_trust %}<span class="a">{{ data.detail.cost_trust }}</span>{% endif %}{% if data.detail.cost_module %}<span class="b">{{ data.detail.cost_module }}</span>{% endif %}</div>
                     </div>
                     <div class="attr" title="再部署时间">
-                        <div v-html="attr('respawnTime') + '秒'"></div>
+                        <div>{{ data.detail.respawnTime }}{% if data.detail.respawnTime_trust %}<span class="a">{{ data.detail.respawnTime_trust }}</span>{% endif %}{% if data.detail.respawnTime_module %}<span class="b">{{ data.detail.respawnTime_module }}</span>{% endif %}秒</div>
                     </div>
                     <div class="attr" title="势力">
                         <div>{{ data.info.nation }}</div>
@@ -65,53 +65,61 @@
                 </div>
                 <div>
                     <div class="title" style="width: 120px">潜能提升</div>
-                    <div class="potential" v-for="item in data.potential">
+                    {% for item in data.potential %}
+                    <div class="potential">
                         <img style="width: 25px;margin-right: 10px"
-                             :src="'../rank/' + (item.potential_rank + 1) + '.png'"
+                             src="../rank/{{ item.potential_rank + 1 }}.png"
                              alt="rank">
                         {{ item.potential_desc }}
                     </div>
+                    {% endfor %}
                 </div>
                 <div>
                     <div class="title" style="width: 120px;margin-top: 5px">真名</div>
-                    <template v-if="data.info.real_name.length">
-                        <div v-for="item in data.info.real_name">{{ item }}</div>
-                    </template>
-                    <div v-else>未知</div>
+                    {% if data.info.real_name %}
+                        {% for item in data.info.real_name %}
+                        <div>{{ item }}</div>
+                        {% endfor %}
+                    {% else %}
+                    <div>未知</div>
+                    {% endif %}
                 </div>
                 <div>
                     <div class="title" style="width: 120px;margin-top: 5px">CV</div>
-                    <template v-if="Object.keys(data.info.cv).length">
-                        <table>
-                            <tr v-for="(item, lang) in data.info.cv">
-                                <td>{{ lang }}：</td>
-                                <td>{{ item.join('、') }}</td>
-                            </tr>
-                        </table>
-                    </template>
-                    <div v-else>未知</div>
+                    {% if data.info.cv_list %}
+                    <table>
+                        {% for cv in data.info.cv_list %}
+                        <tr>
+                            <td>{{ cv.lang }}：</td>
+                            <td>{{ cv.value }}</td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                    {% else %}
+                    <div>未知</div>
+                    {% endif %}
                 </div>
             </div>
             <div class="operator-name">
-                <div class="range" style="margin: 15px 0" v-html="range(data.info.range)"></div>
+                <div class="range" style="margin: 15px 0">{{ data.info.range_html | safe }}</div>
                 <div class="class-info">
                     <div style="width: 60px;padding: 5px;background: #000">
                         <img style="width: 100%"
-                             :src="'../classify/' + classesIcons[data.info.classes]"
+                             src="{{ data.info.classes_icon_url }}"
                              alt="classify">
                     </div>
                     <div class="rarity">
                         <div style="font-size: 30px;display: flex">
-                            <i v-for="n in data.info.rarity">★</i>
+                            {% for n in range(data.info.rarity) %}★{% endfor %}
                         </div>
                         <div>{{ data.info.classes }} - {{ data.info.classes_sub }}</div>
                     </div>
                 </div>
                 <div class="tags">
-                    <span v-if="data.info.is_sp" style="background: #9c27b0">异格干员</span>
-                    <span v-for="item in data.info.tags">{{ item }}</span>
+                    {% if data.info.is_sp %}<span style="background: #9c27b0">异格干员</span>{% endif %}
+                    {% for item in data.info.tags %}<span>{{ item }}</span>{% endfor %}
                 </div>
-                <div class="trait" v-html="colorSpan(data.detail.operator_trait, false)"></div>
+                <div class="trait">{{ data.detail.operator_trait_html | safe }}</div>
                 <div class="name" style="padding-top: 10px; font-size: 50px">{{ data.info.name }}</div>
                 <div class="name" style="padding-bottom: 10px; font-size: 30px">
                     <span>{{ data.info.number }}</span>
@@ -125,95 +133,69 @@
                 <div class="exInfo">{{ data.info.profile }}</div>
                 <i class="exInfo">「{{ data.info.impression }}」</i>
             </div>
-            <div v-if="data.info.potential_item">
+            {% if data.info.potential_item %}
+            <div>
                 <div class="title">信物</div>
                 <div class="exInfo">{{ data.info.potential_item }}</div>
             </div>
+            {% endif %}
             <div>
                 <div class="title">天赋</div>
-                <div class="exInfo" v-for="item in data.talents">
+                {% for item in data.talents %}
+                <div class="exInfo">
                     <div style="width: 120px">{{ item.talents_name }}</div>
-                    <div style="width: calc(100% - 120px);padding-left: 10px" v-html="item.talents_desc"></div>
+                    <div style="width: calc(100% - 120px);padding-left: 10px">{{ item.talents_desc_html | safe }}</div>
                 </div>
+                {% endfor %}
             </div>
             <div>
                 <div class="title">基建技能</div>
-                <div class="exInfo bs" v-for="item in data.building_skills">
-                    <div style="width: 60px">精英{{ item.bs_unlocked.toString().match(/(\d+)/)[1] }}</div>
+                {% for item in data.building_skills %}
+                <div class="exInfo bs">
+                    <div style="width: 60px">精英{{ item.bs_elite }}</div>
                     <div class="bs-icon"
-                         :style="{backgroundImage: `url('${buildingSkillIconPath(item.bs_icon)}')`}">
+                         style="background-image: url('{{ item.bs_icon_url }}')">
                     </div>
                     <div style="width: 100px">{{ item.bs_name }}</div>
                     <div style="width: calc(100% - 160px);padding-left: 10px">{{ item.bs_desc }}</div>
                 </div>
+                {% endfor %}
             </div>
             <div class="skills">
-                <div v-for="item in data.skill_list" class="skill-item">
+                {% for item in data.skill_list %}
+                <div class="skill-item">
                     <div style="width: 120px;text-align: center">
                         <div>
                             <img style="width: 80px"
-                                 :src="skillIconPath(item.skill_icon)"
+                                 src="{{ item.skill_icon_url }}"
                                  alt="skill">
                         </div>
                         <div>{{ item.skill_name }}</div>
                     </div>
                     <div style="width: calc(100% - 240px);padding: 0 10px">
                         <div class="skill-type" style="margin-bottom: 5px">
-                            <div :class="'t' + skillItem(item).sp_type">
-                                {{ spType[skillItem(item).sp_type] }}
+                            <div class="t{{ item.sp_type }}">
+                                {{ item.sp_type_text }}
                             </div>
-                            <div>{{ skillType[skillItem(item).skill_type] }}</div>
-                            <div v-if="skillItem(item).sp_cost">
-                                技力 {{ skillItem(item).sp_init }}/{{ skillItem(item).sp_cost }}
+                            <div>{{ item.skill_type_text }}</div>
+                            {% if item.sp_cost %}
+                            <div>
+                                技力 {{ item.sp_init }}/{{ item.sp_cost }}
                             </div>
-                            <div v-if="skillItem(item).duration > 0">持续 {{ skillItem(item).duration }} 秒</div>
+                            {% endif %}
+                            {% if item.duration > 0 %}<div>持续 {{ item.duration }} 秒</div>{% endif %}
                         </div>
-                        <div class="skill-desc" v-html="colorSpan(skillItem(item).description)"></div>
+                        <div class="skill-desc">{{ item.description_html | safe }}</div>
                     </div>
                     <div class="skill-range">
-                        <div v-html="range(skillItem(item).range)"></div>
+                        {{ item.range_html | safe }}
                     </div>
                 </div>
+                {% endfor %}
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
 </body>
-<script src="js/vue.min.js"></script>
-<script src="js/gamedata.js"></script>
-<script>
-    const template = new Vue({
-        el: '#template',
-        computed: {
-            lastModule() {
-                if (this.data.modules.length) {
-                    return this.data.modules[this.data.modules.length - 1].attrs
-                }
-                return {}
-            }
-        },
-        methods: {
-            init(data) {
-                this.$set(this, 'data', data)
-            },
-            attr(name) {
-                return this.data.detail[name]
-                    + (this.data.trust[name] ? `<span class="a">+${this.data.trust[name]}</span>` : '')
-                    + (this.lastModule[name] ? `<span class="b">+${this.lastModule[name]}</span>` : '').replace(/\+-/g, '-')
-            },
-            skillItem(item) {
-                const skills = this.data.skills_desc[item.skill_no]
-                return skills[skills.length - 1]
-            }
-        },
-        data() {
-            return {
-                data: {}
-            }
-        },
-        mounted() {
-            window.init = this.init
-        }
-    })
-</script>
 </html>

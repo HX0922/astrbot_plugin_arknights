@@ -11,22 +11,24 @@
 </head>
 <body>
 <div id="template">
-    <div v-if="Object.keys(data).length">
+    {% if data %}
+    <div>
         <div style="margin-bottom: 20px">
             通过【<span style="color: #ff6900">{{ data.search }}</span>】搜索到以下敌人单位：
         </div>
         <div class="enemyBox">
-            <div class="enemyItem" v-for="(item, name) in data.result">
+            {% for item in data.result %}
+            <div class="enemyItem">
                 <div class="avatar">
-                    <img style="width: 100%" :src="enemyIconPath(item.info.enemyId)" alt="" onerror="hideImage(this)">
+                    <img style="width: 100%" src="{{ item.enemy_icon_path }}" alt="" onerror="this.src='./img/enemy.png'">
                 </div>
                 <div class="detail">
                     <div>
-                        <span class="indexNo">{{ Object.keys(data.result).indexOf(name) + 1 }}</span>
+                        <span class="indexNo">{{ loop.index }}</span>
                         {{ item.info.name }}
                     </div>
                     <div class="tags">
-                        <span class="tag" :class="item.info.enemyLevel">{{ level[item.info.enemyLevel] }}</span>
+                        <span class="tag {{ item.info.enemyLevel }}">{{ item.info.level_name }}</span>
                         <!--
                         <span class="tag attackType" v-for="n in item.info.attackType.split(' ')">{{ n }}</span>
                         -->
@@ -37,47 +39,10 @@
                     </div>
                 </div>
             </div>
+            {% endfor %}
         </div>
     </div>
+    {% endif %}
 </div>
 </body>
-<script src="js/vue.min.js"></script>
-<script>
-    const gamedataPath = '../../../'
-
-    function enemyIconPath(enemyIcon) {
-        return gamedataPath + 'resource/gamedata/enemy/' + enemyIcon + '.png'
-    }
-
-    function hideImage(e) {
-        e.src = './img/enemy.png'
-    }
-
-    const template = new Vue({
-        el: '#template',
-        methods: {
-            init(data) {
-                this.$set(this, 'data', data)
-            },
-            avatar(data) {
-                return {
-                    backgroundImage: `url('../../../resource/gamedata/enemy/${data.info.enemyId}.png')`
-                }
-            }
-        },
-        data() {
-            return {
-                data: {},
-                level: {
-                    'NORMAL': '普通',
-                    'ELITE': '精英',
-                    'BOSS': 'BOSS',
-                }
-            }
-        },
-        mounted() {
-            window.init = this.init
-        }
-    })
-</script>
 </html>
