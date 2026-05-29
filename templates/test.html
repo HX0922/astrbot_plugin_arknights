@@ -1,16 +1,28 @@
 <!doctype html>
 <html><head><meta charset="UTF-8"><style>
-body{font-family:sans-serif;background:#1a1a2e;color:#fff;padding:20px}
-h1{color:#ff6b6b;font-size:32px}
-.stars{color:#ffd700}
-.info{margin:10px 0;font-size:16px}
-.label{color:#888}
+body{font-family:"Microsoft YaHei",sans-serif;background:#1a1a2e;color:#e0e0e0;padding:20px;max-width:500px}
+h1{color:#ff6b6b;font-size:28px;margin:0 0 5px 0}
+.stars{color:#ffd700;font-size:22px}
+.card{background:#16213e;border-radius:10px;padding:15px;margin:10px 0}
+.row{display:flex;margin:5px 0}
+.label{color:#888;width:80px;flex-shrink:0}
+.tag{display:inline-block;background:#000;color:#fff;padding:2px 8px;border-radius:3px;margin:2px;font-size:14px}
 </style></head>
 <body>
-<h1>{{ name }} <span class="stars">{{ stars }}</span></h1>
-<div class="info"><span class="label">职业:</span> {{ classes }}</div>
-<div class="info"><span class="label">标签:</span> {{ tags }}</div>
-<div class="info"><span class="label">生命:</span> {{ hp }} | <span class="label">攻击:</span> {{ atk }} | <span class="label">防御:</span> {{ def_ }}</div>
-<div class="info"><span class="label">天赋:</span> {{ talent }}</div>
-<div class="info"><span class="label">描述:</span> {{ desc }}</div>
+<h1>%s <span class="stars">%s</span></h1>
+<div class="card">
+<div class="row"><span class="label">职业</span><span>%s | %s</span></div>
+<div class="row"><span class="label">生命</span><span>%s</span></div>
+<div class="row"><span class="label">攻击</span><span>%s</span></div>
+<div class="row"><span class="label">防御</span><span>%s</span></div>
+<div class="row"><span class="label">法抗</span><span>%s</span></div>
+<div class="row"><span class="label">费用</span><span>%s | 阻挡 %s</span></div>
+</div>
+<div class="card">
+<div class="row"><span class="label">标签</span><span>%s</span></div>
+<div class="row"><span class="label">天赋</span><span>%s</span></div>
+<div class="row"><span class="label">获取</span><span>%s</span></div>
+</div>
+<div class="card" style="font-size:14px;color:#aaa">%s</div>
+%s
 </body></html>

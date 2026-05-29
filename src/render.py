@@ -1,24 +1,24 @@
 """
-HTML 模板渲染适配层
+HTML 模板渲染 — 纯 Python 字符串拼接，不依赖 Jinja2
 """
 
-import json
-import re
 from pathlib import Path
 
-TEAM_TABLE = {
-    "rhodes": "罗德岛", "penguin": "企鹅物流", "blacksteel": "黑钢国际",
-    "rhine": "莱茵生命", "sweep": "S.W.E.E.P", "kappa": "喀兰贸易",
-    "gavial": "嘉维尔团队", "yan": "炎", "lgd": "龙门近卫局",
-    "siracusa": "叙拉古", "siesta": "汐斯塔", "victoria": "维多利亚",
-    "ursus": "乌萨斯", "bolivar": "玻利瓦尔", "columbia": "哥伦比亚",
-    "sargon": "萨尔贡", "sami": "萨米", "higashi": "东国",
-    "laterano": "拉特兰", "leithanien": "莱塔尼亚", "kazimierz": "卡西米尔",
-    "rim": "雷姆必拓", "minos": "米诺斯", "iberia": "伊比利亚",
-    "kjerag": "谢拉格", "dublinn": "深池", "egir": "阿戈尔",
-    "abyssal": "深海猎人", "followers": "使徒", "babel": "巴别塔",
-    "siracusano": "叙拉古", "glasgow": "格拉斯哥帮", "lungmen": "龙门",
-}
+
+def _load_html(name: str) -> str:
+    path = Path(__file__).resolve().parent.parent / "templates" / name
+    if not path.exists():
+        return ""
+    return path.read_text(encoding="utf-8")
+
+
+async def _render_raw(star_self, html: str) -> str | None:
+    """发送纯 HTML 到 T2I，数据已内联，无需 Jinja2"""
+    try:
+        return await star_self.html_render(html, {})
+    except Exception:
+        return None
+
 
 PROF_CN = {
     "WARRIOR": "近卫", "SNIPER": "狙击", "TANK": "重装",
@@ -27,62 +27,46 @@ PROF_CN = {
 }
 
 
-def _load_template(name: str) -> str:
-    path = Path(__file__).resolve().parent.parent / "templates" / name
-    if not path.exists():
-        return ""
-    with open(path, "r", encoding="utf-8") as f:
-        return f.read()
-
-
-async def _render(star_self, template_name: str, **data) -> str | None:
-    try:
-        tmpl = _load_template(template_name)
-        if not tmpl:
-            return None
-        return await star_self.html_render(tmpl, data)
-    except Exception:
-        return None
-
-
 async def render_operator_info(star_self, char: dict, char_id: str) -> str | None:
-    """干员信息卡片"""
-    from .game_data import ArkData
-    gd = ArkData()
-
-    name = char.get("name", "")
+    """渲染干员信息 — 纯 Python 拼 HTML，不经过 Jinja2"""
+    name = char.get("name", "?")
     rarity = char.get("rarity", 0) + 1
+    stars = "★" * rarity
+    prof = PROF_CN.get(char.get("profession", ""), char.get("profession", ""))
+    sub = char.get("subProfessionId", "")
     phases = char.get("phases", [])
     max_phase = phases[-1] if phases else {}
     attrs = max_phase.get("attributesKeyFrames", [{}])[-1].get("data", {})
 
-    # 先用简单模板测试 T2I 是否正常
-    test_data = {
-        "name": name,
-        "stars": "★" * rarity,
-        "classes": PROF_CN.get(char.get("profession", ""), char.get("profession", "")),
-        "tags": ", ".join(char.get("tagList", [])),
-        "hp": str(attrs.get("maxHp", "?")),
-        "atk": str(attrs.get("atk", "?")),
-        "def_": str(attrs.get("def", "?")),
-        "talent": "无",
-        "desc": (char.get("description", "") or "")[:100],
-    }
+    hp = str(attrs.get("maxHp", "?"))
+    atk = str(attrs.get("atk", "?"))
+    def_ = str(attrs.get("def", "?"))
+    mres = str(attrs.get("magicResistance", "?"))
+    cost = str(attrs.get("cost", "?"))
+    block = str(attrs.get("blockCnt", "?"))
 
-    # 尝试天赋
-    talents = char.get("talents", [])
-    if talents:
-        for t in talents:
-            for c in t.get("candidates", []):
-                if c.get("name") and "？" not in c.get("name", ""):
-                    test_data["talent"] = c.get("name", "")
-                    break
+    tags_html = " ".join(
+        f'<span class="tag">{t}</span>' for t in char.get("tagList", [])
+    )
 
-    # 先用 test.html 验证 T2I 可用
-    result = await _render(star_self, "test.html", **test_data)
-    if result:
-        return result
+    talent = "无"
+    for t in char.get("talents", []):
+        for c in t.get("candidates", []):
+            if c.get("name") and "？" not in c.get("name", ""):
+                talent = c.get("name", "")
+                break
 
-    # T2I 不可用，跳过复杂模板
-    return None
+    obtain = char.get("itemObtainApproach", "") or ""
+    desc = (char.get("description", "") or "")[:150]
 
+    # 立绘
+    portrait_url = f"https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/{char_id}_1.png"
+    portrait_html = f'<img src="{portrait_url}" style="max-width:100%;border-radius:5px;margin-top:10px">'
+
+    tmpl = _load_html("test.html")
+    html = tmpl % (
+        name, stars, prof, sub, hp, atk, def_, mres, cost, block,
+        tags_html, talent, obtain, desc, portrait_html,
+    )
+
+    return await _render_raw(star_self, html)
