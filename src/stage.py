@@ -8,8 +8,47 @@ from .game_data import ArkData
 
 
 def search_stage(keyword: str) -> list[dict]:
-    """按 ID 或名称搜索关卡"""
-    return ArkData().search_stages(keyword)
+    """按 ID 或名称搜索关卡，支持难度变体"""
+    data = ArkData()
+    kw = keyword.strip()
+
+    # 难度检测
+    diff_prefix = ""
+    diff_label = ""
+    for diff_kw, (prefix, label) in DIFFICULTY_MAP.items():
+        if diff_kw in kw:
+            diff_prefix = prefix
+            diff_label = label
+            kw = kw.replace(diff_kw, "").strip()
+            break
+
+    results = data.search_stages(kw)
+
+    # 应用难度变换
+    if diff_prefix and results:
+        # 在现有结果中找匹配难度的
+        for stage in results:
+            sid = stage.get("stageId", stage.get("id", ""))
+            if diff_prefix in sid:
+                stage["_difficulty_label"] = diff_label
+                return [stage]
+        # 回退: 尝试构造难度 ID
+        stage = results[0]
+        orig_id = stage.get("stageId", "")
+        for candidate in [f"{diff_prefix}{orig_id}", f"{orig_id}{diff_prefix}"]:
+            if candidate in data.stages:
+                return [{"id": candidate, **data.stages[candidate], "_difficulty_label": diff_label}]
+
+    return results
+
+
+DIFFICULTY_MAP = {
+    "突袭": ("_hard", "突袭"),
+    "简单": ("easy_", "简单"),
+    "剧情": ("easy_", "剧情"),
+    "困难": ("tough_", "困难"),
+    "磨难": ("tough_", "磨难"),
+}
 
 
 def format_stage_info(stage: dict) -> str:

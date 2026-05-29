@@ -36,7 +36,7 @@ def format_material_info(item: dict) -> str:
     if obtain:
         lines.append(f"获取方式: {obtain}")
 
-    # 建造/制造时间
+    # 制造信息
     build = item.get("buildingProductList", [])
     if build:
         for b in build[:3]:
@@ -45,6 +45,49 @@ def format_material_info(item: dict) -> str:
             count = b.get("count", 1)
             lines.append(f"制造: {room} | 配方: {formula} | 产出: {count}")
 
+    # 合成树（递归查找子材料）
+    tree = _build_craft_tree(item_id, max_depth=3)
+    if tree:
+        lines.append(f"\n【合成路径】")
+        lines.append(_format_tree(tree, indent=0))
+
+    return "\n".join(lines)
+
+
+def _build_craft_tree(item_id: str, max_depth: int = 3, depth: int = 0) -> list | None:
+    """递归构建合成树"""
+    if depth >= max_depth:
+        return None
+
+    data = ArkData()
+    # 查找合成配方
+    for bid, bdata in data._load_json("building_data.json").get("workshopFormulas", {}).items():
+        if bdata.get("itemId") == item_id and bdata.get("itemCount", 0) > 0:
+            costs = bdata.get("costs", [])
+            children = []
+            for cost in costs:
+                child_id = cost.get("id", "")
+                child_count = cost.get("count", 0)
+                child_name = data.items.get(child_id, {}).get("name", child_id)
+                subtree = _build_craft_tree(child_id, max_depth, depth + 1)
+                children.append({
+                    "name": child_name,
+                    "id": child_id,
+                    "count": child_count,
+                    "children": subtree,
+                })
+            return children
+    return None
+
+
+def _format_tree(children: list, indent: int = 0) -> str:
+    """格式化合成树为文本缩进结构"""
+    lines = []
+    prefix = "  " * indent
+    for child in children:
+        lines.append(f"{prefix}├ {child['count']}× {child['name']}")
+        if child.get("children"):
+            lines.append(_format_tree(child["children"], indent + 1))
     return "\n".join(lines)
 
 

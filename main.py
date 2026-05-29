@@ -235,6 +235,10 @@ class ArknightsPlugin(Star):
             return
 
         text = format_stage_info(results[0])
+        # 显示难度标签
+        diff_label = results[0].get("_difficulty_label", "")
+        if diff_label:
+            text = f"【{diff_label}模式】\n{text}"
         yield event.plain_result(text)
 
     # ── /敌人 ──────────────────────────────────────────
