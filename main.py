@@ -22,16 +22,43 @@ from .src.render import render_operator_info
 from .src.resource import initialize_resource, download_portrait
 
 
+def _ensure_chromium():
+    """确保 Playwright Chromium 已安装（智能检测 OS）"""
+    import subprocess, sys, platform
+    try:
+        from playwright.sync_api import sync_playwright
+        p = sync_playwright().start()
+        try:
+            p.chromium.launch(headless=True).close()
+            return  # 已可用
+        except Exception:
+            pass
+        finally:
+            p.stop()
+    except Exception:
+        pass
+
+    # 需要安装
+    logger.info("[Arknights] 正在安装 Playwright Chromium...")
+    cmd = [sys.executable, "-m", "playwright", "install"]
+    if platform.system() == "Linux":
+        cmd.append("--with-deps")
+    cmd.append("chromium")
+    subprocess.run(cmd, check=False)
+    logger.info("[Arknights] Chromium 安装完成")
+
+
 class ArknightsPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
 
     async def initialize(self):
-        """插件激活时加载游戏数据"""
+        """插件激活时加载游戏数据和渲染环境"""
         logger.info("[Arknights] 正在初始化插件...")
         try:
+            _ensure_chromium()
             initialize_resource()
-            ArkData()  # 触发数据预加载
+            ArkData()
             logger.info("[Arknights] 游戏数据加载完成")
         except Exception as e:
             logger.error(f"[Arknights] 数据加载失败: {e}")

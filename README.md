@@ -38,11 +38,24 @@ astrbot_plugin_arknights/
 ### 环境
 
 - Python >= 3.12
+- Playwright + Chromium（首次加载插件时自动安装）
 
 ```bash
 uv venv --python 3.12
 source .venv/bin/activate
 uv pip install -e /path/to/AstrBot
+```
+
+### 手动安装 Chromium
+
+如果自动安装失败，可手动执行：
+
+```bash
+# Windows / macOS
+playwright install chromium
+
+# Linux
+playwright install --with-deps chromium
 ```
 
 ### 运行测试
