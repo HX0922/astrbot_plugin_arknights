@@ -8,7 +8,8 @@
   - gacha_table.json: recruitRarityTable (稀有度权重)
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from itertools import combinations
 from .game_data import ArkData
 
 
@@ -58,8 +59,8 @@ class RecruitCalculator:
         self._pool = []
         for char_id, char in self.data.chars.items():
             rarity = char.get("rarity", 0)
-            # 公招只包含 1-5 星干员（游戏内 rarity 0-4）
-            if rarity > 4:
+            # 公招只包含 1-6 星干员
+            if rarity > 5:
                 continue
 
             tags = self._char_tags(char)
@@ -91,6 +92,12 @@ class RecruitCalculator:
         # tagList
         for t in char.get("tagList", []):
             tags.append(t)
+        # 稀有度隐含标签
+        rarity = char.get("rarity", 0)
+        if rarity >= 4:  # 5★+
+            tags.append("资深干员")
+        if rarity >= 5:  # 6★
+            tags.append("高级资深干员")
         return tags
 
     def calculate(self, tags: list[str]) -> list[tuple[RecruitResult, list[str]]]:
@@ -117,3 +124,54 @@ class RecruitCalculator:
 
     def get_all_tags(self) -> list[str]:
         return list(TAG_MAP.keys())
+
+    def calculate_all_combinations(self, tags: list[str]) -> list[dict]:
+        """生成所有标签子集组合，按招募效果排序
+
+        每个用户可选的标签组合中，计算所有可能的子集，
+        找出能锁定特定干员的组合。按"锁定稀有度"排序。
+
+        Returns:
+            [{tags: [...], operators: [...], highlight: bool}, ...]
+            highlight=True 表示该组合能锁定高稀有干员
+        """
+        if not self.pool or not tags:
+            return []
+
+        # 映射标签
+        mapped = [TAG_MAP.get(t.strip(), t.strip()) for t in tags if t.strip()]
+        if len(mapped) < 1:
+            return []
+
+        seen_results = {}  # frozenset(tags) → result list
+        all_combos = []
+
+        # 生成所有非空子集（1~5 个标签足够）
+        for r in range(1, min(len(mapped) + 1, 6)):
+            for combo in combinations(mapped, r):
+                combo_key = frozenset(combo)
+                if combo_key in seen_results:
+                    continue
+
+                results = self.calculate(list(combo))
+                if not results:
+                    continue
+
+                seen_results[combo_key] = results
+
+                # 评分: 最高稀有度 + 结果数量（越少越精准）
+                top_rarity = results[0][0].rarity if results else 0
+                precision = 1.0 / len(results) if results else 0
+                score = top_rarity * 10 + precision * 5
+
+                all_combos.append({
+                    "tags": list(combo),
+                    "results": results,
+                    "score": score,
+                    "highlight": top_rarity >= 4,  # 5★+ 高亮
+                })
+
+        # 按分数降序
+        all_combos.sort(key=lambda x: -x["score"])
+
+        return all_combos[:20]  # 最多 20 个组合

@@ -111,6 +111,26 @@ class ArknightsPlugin(Star):
 
         tags = [t.strip() for t in tags_str.split()]
         calc = RecruitCalculator()
+
+        # 使用全排列优化（标签 ≥2 时）
+        if len(tags) >= 2:
+            combos = calc.calculate_all_combinations(tags)
+            if combos:
+                lines = [f"当前可选标签: {', '.join(tags)}\n"]
+                lines.append("━━ 推荐组合（按效果排序）━━")
+                for i, combo in enumerate(combos[:8]):
+                    prefix = "🌟 " if combo["highlight"] else f"{i+1}. "
+                    top_op = combo["results"][0][0]
+                    stars = "★" * (top_op.rarity + 1)
+                    lines.append(
+                        f"{prefix}{', '.join(combo['tags'])} "
+                        f"→ {stars} {top_op.name} "
+                        f"(共 {len(combo['results'])} 名)"
+                    )
+                yield event.plain_result("\n".join(lines))
+                return
+
+        # 单标签或回退到简单计算
         results = calc.calculate(tags)
 
         if not results:
