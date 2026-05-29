@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="enemyIndex.css">
+<title>敌方单位查询</title>
+</head>
+<body>
+<div class="enemy-index">
+  <h2>找到 {{ count }} 个匹配的敌方单位</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>序号</th>
+        <th>名称</th>
+        <th>编号</th>
+        <th>等级</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for enemy in enemies %}
+      <tr class="rarity-{{ enemy.rarity|default('normal') }}">
+        <td class="index">{{ loop.index }}</td>
+        <td class="name">{{ enemy.name }}</td>
+        <td class="code">{{ enemy.index }}</td>
+        <td class="level">{{ enemy.level }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="tip">回复【序号】查看详细信息</p>
+</div>
+</body>
+</html>

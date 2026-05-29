@@ -15,6 +15,8 @@ from src.game_data import ArkData
 from src.operator import format_operator_brief
 from src.recruit import RecruitCalculator
 from src.gacha import GachaPool
+from src.enemy import search_enemy, format_enemy_brief, format_enemy_index_list
+from src.state import check_wait, wait_for
 
 
 class ArknightsPlugin(Star):
@@ -185,6 +187,67 @@ class ArknightsPlugin(Star):
 
         text = format_stage_info(results[0])
         yield event.plain_result(text)
+
+    # ── /敌人 ──────────────────────────────────────────
+
+    @filter.command("敌人")
+    async def cmd_enemy(self, event: AstrMessageEvent):
+        """查询敌方单位。用法: /敌人 名称"""
+        name = event.message_str.replace("/敌人", "").strip()
+        if not name:
+            yield event.plain_result(
+                "博士，请输入要查询的敌方单位名称。\n用法: /敌人 源石虫"
+            )
+            return
+
+        results = search_enemy(name)
+        if not results:
+            yield event.plain_result(
+                f"博士，没有找到与「{name}」相关的敌方单位。"
+            )
+            return
+
+        # 精确匹配
+        exact = [e for e in results if e["name"] == name]
+        if len(exact) == 1:
+            text = format_enemy_brief(exact[0])
+            yield event.plain_result(text)
+            return
+
+        # 单个结果直接返回
+        if len(results) == 1:
+            yield event.plain_result(format_enemy_brief(results[0]))
+            return
+
+        # 多个结果，让用户选择
+        uid = event.get_sender_id() if hasattr(event, 'get_sender_id') else str(id(event))
+        wait_for(uid, "enemy_select", {"results": results})
+        yield event.plain_result(format_enemy_index_list(results))
+
+    @filter.regex(r"^\d+$")
+    async def handle_index_select(self, event: AstrMessageEvent):
+        """处理多结果序号选择（状态机）"""
+        uid = event.get_sender_id() if hasattr(event, 'get_sender_id') else str(id(event))
+        state = check_wait(uid)
+        if not state:
+            return  # 不是等待状态，不处理
+
+        try:
+            idx = int(event.message_str.strip()) - 1
+        except ValueError:
+            yield event.plain_result("博士，请输入有效的数字序号。")
+            return
+
+        results = state["context"].get("results", [])
+        step = state["step"]
+
+        if step == "enemy_select":
+            if 0 <= idx < len(results):
+                yield event.plain_result(format_enemy_brief(results[idx]))
+            else:
+                yield event.plain_result(
+                    f"博士，请输入 1 到 {len(results)} 之间的序号。"
+                )
 
     # ── /arkhelp ───────────────────────────────────────
 

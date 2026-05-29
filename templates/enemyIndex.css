@@ -1,0 +1,19 @@
+/* enemyIndex.html styles */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  padding: 20px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+.enemy-index h2 { color: #4ecdc4; font-size: 18px; margin-bottom: 16px; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; padding: 8px 6px; color: #888; font-size: 13px; border-bottom: 1px solid #333; }
+td { padding: 8px 6px; font-size: 14px; border-bottom: 1px solid #222; }
+.index { color: #4ecdc4; width: 40px; }
+.name { color: #e0e0e0; }
+.code { color: #888; font-size: 12px; }
+.level { font-size: 12px; font-weight: bold; }
+.tip { color: #888; font-size: 13px; margin-top: 16px; text-align: center; }

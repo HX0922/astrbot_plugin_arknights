@@ -1,0 +1,30 @@
+/* enemy.html styles */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  padding: 20px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+.enemy-card h1 { font-size: 24px; color: #ff6b6b; margin-bottom: 8px; }
+.enemy-index { color: #888; font-size: 14px; }
+.enemy-info { margin: 16px 0; }
+.info-row { display: flex; margin: 6px 0; font-size: 15px; }
+.label { color: #888; width: 80px; flex-shrink: 0; }
+.value { color: #e0e0e0; }
+.level-boss { color: #ff4444; font-weight: bold; }
+.level-elite { color: #ff9944; }
+.level-normal { color: #e0e0e0; }
+.enemy-desc { margin: 16px 0; padding: 12px; background: #16213e; border-radius: 8px; }
+.enemy-desc h3 { color: #4ecdc4; margin-bottom: 8px; font-size: 16px; }
+.enemy-desc p { font-size: 14px; line-height: 1.6; color: #ccc; }
+.enemy-abilities { margin: 16px 0; }
+.enemy-abilities h3 { color: #4ecdc4; margin-bottom: 8px; font-size: 16px; }
+.enemy-abilities ul { list-style: none; }
+.enemy-abilities li { padding: 4px 0 4px 16px; font-size: 14px; color: #ccc; position: relative; }
+.enemy-abilities li::before { content: "·"; position: absolute; left: 0; color: #4ecdc4; }
+.enemy-linked { margin: 16px 0; }
+.enemy-linked h3 { color: #4ecdc4; margin-bottom: 8px; font-size: 16px; }
+.enemy-linked p { font-size: 14px; color: #ccc; }

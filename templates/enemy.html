@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="enemy.css">
+<title>敌方单位 - {{ name }}</title>
+</head>
+<body>
+<div class="enemy-card">
+  <div class="enemy-header">
+    <h1>{{ name }}</h1>
+    {% if index %}<span class="enemy-index">No.{{ index }}</span>{% endif %}
+  </div>
+
+  <div class="enemy-info">
+    {% if level %}
+    <div class="info-row">
+      <span class="label">等级</span>
+      <span class="value level-{{ level|lower }}">{{ level }}</span>
+    </div>
+    {% endif %}
+
+    {% if races %}
+    <div class="info-row">
+      <span class="label">种族</span>
+      <span class="value">{{ races }}</span>
+    </div>
+    {% endif %}
+
+    {% if damage_type %}
+    <div class="info-row">
+      <span class="label">伤害类型</span>
+      <span class="value">{{ damage_type }}</span>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if description %}
+  <div class="enemy-desc">
+    <h3>描述</h3>
+    <p>{{ description }}</p>
+  </div>
+  {% endif %}
+
+  {% if abilities %}
+  <div class="enemy-abilities">
+    <h3>能力</h3>
+    <ul>
+    {% for ability in abilities %}
+      <li>{{ ability }}</li>
+    {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if linked %}
+  <div class="enemy-linked">
+    <h3>关联敌人</h3>
+    <p>{{ linked }}</p>
+  </div>
+  {% endif %}
+</div>
+</body>
+</html>
