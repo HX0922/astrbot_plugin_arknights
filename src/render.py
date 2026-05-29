@@ -46,7 +46,7 @@ async def _render(star_self, template_name: str, **data) -> str | None:
 
 
 async def render_operator_info(star_self, char: dict, char_id: str) -> str | None:
-    """干员信息卡片 — 数据格式对齐 AmiyaBot OperatorData.get_operator_detail()"""
+    """干员信息卡片"""
     from .game_data import ArkData
     gd = ArkData()
 
@@ -56,151 +56,33 @@ async def render_operator_info(star_self, char: dict, char_id: str) -> str | Non
     max_phase = phases[-1] if phases else {}
     attrs = max_phase.get("attributesKeyFrames", [{}])[-1].get("data", {})
 
-    # ── info (对齐 AmiyaBot operator.infos 列表) ──
-    info = {
+    # 先用简单模板测试 T2I 是否正常
+    test_data = {
         "name": name,
-        "en_name": char.get("appellation", "") or "",
-        "number": char.get("displayNumber", "") or "",
-        "rarity": rarity,
+        "stars": "★" * rarity,
         "classes": PROF_CN.get(char.get("profession", ""), char.get("profession", "")),
-        "classes_sub": char.get("subProfessionId", ""),
-        "nation": _resolve_team(char.get("nationId", "")),
-        "group": _resolve_team(char.get("groupId", "")),
-        "team": _resolve_team(char.get("teamId", "")),
-        "race": _parse_race(char),
-        "drawer": _parse_drawer(char),
-        "birthday": _parse_birthday(char),
-        "tags": char.get("tagList", []),
-        "is_sp": char.get("isSpChar", False),
-        "profile": char.get("itemUsage", "") or "",
-        "impression": char.get("itemDesc", "") or "",
-        "potential_item": "",
-        "range": "",
-        "real_name": [],
-        "cv": {},
+        "tags": ", ".join(char.get("tagList", [])),
+        "hp": str(attrs.get("maxHp", "?")),
+        "atk": str(attrs.get("atk", "?")),
+        "def_": str(attrs.get("def", "?")),
+        "talent": "无",
+        "desc": (char.get("description", "") or "")[:100],
     }
 
-    # ── detail (属性) ──
-    detail = {
-        "maxHp": attrs.get("maxHp", 0),
-        "atk": attrs.get("atk", 0),
-        "def": attrs.get("def", 0),
-        "magicResistance": attrs.get("magicResistance", 0),
-        "attackSpeed": attrs.get("attackSpeed", 100),
-        "baseAttackTime": attrs.get("baseAttackTime", 0),
-        "blockCnt": attrs.get("blockCnt", 1),
-        "cost": attrs.get("cost", 0),
-        "respawnTime": attrs.get("respawnTime", 0),
-        "operator_trait": _clean_trait(char.get("description", "")),
-    }
+    # 尝试天赋
+    talents = char.get("talents", [])
+    if talents:
+        for t in talents:
+            for c in t.get("candidates", []):
+                if c.get("name") and "？" not in c.get("name", ""):
+                    test_data["talent"] = c.get("name", "")
+                    break
 
-    # ── 天赋 ──
-    talents = []
-    for t in char.get("talents", []):
-        for c in t.get("candidates", []):
-            if c.get("name") and "？" not in c.get("name", ""):
-                talents.append({
-                    "talents_name": c.get("name", ""),
-                    "talents_desc": _clean_desc(c.get("description", "")),
-                })
-                break
+    # 先用 test.html 验证 T2I 可用
+    result = await _render(star_self, "test.html", **test_data)
+    if result:
+        return result
 
-    # ── 技能 ──
-    skill_list = []
-    skills_desc = {}
-    raw_skills = char.get("skills", [])
-    for i, sk in enumerate(raw_skills):
-        sid = sk.get("skillId", "")
-        skill_data = _load_skill_json(gd, sid)
-        levels = skill_data.get("levels", [])
-        skill_name = levels[0].get("name", f"技能{sid}") if levels else f"技能{sid}"
-        skill_list.append({
-            "skill_no": i,
-            "skill_name": skill_name,
-            "skill_icon": f"skill_icon_{sid}",
-        })
-        # Build skills_desc (each level)
-        skill_descs = []
-        for lv in levels:
-            skill_descs.append({
-                "sp_type": lv.get("spData", {}).get("spType", 1),
-                "sp_init": lv.get("spData", {}).get("initSp", 0),
-                "sp_cost": lv.get("spData", {}).get("spCost", 0),
-                "duration": lv.get("duration", 0),
-                "skill_type": lv.get("skillType", 0),
-                "description": _clean_desc(lv.get("description", "")),
-                "range": "",
-            })
-        skills_desc[i] = skill_descs
+    # T2I 不可用，跳过复杂模板
+    return None
 
-    # ── 潜能 ──
-    potential = []
-    for rank in char.get("potentialRanks", []):
-        potential.append({
-            "potential_rank": rank.get("type", 0),
-            "potential_desc": rank.get("description", ""),
-        })
-
-    # ── 基建技能 ──
-    building_skills = []
-    for bs in char.get("trait", {}).get("candidates", []) if char.get("trait") else []:
-        pass  # Amiya doesn't have building skills in trait
-
-    data = {
-        "info": info,
-        "detail": detail,
-        "trust": {},
-        "talents": talents,
-        "potential": potential,
-        "building_skills": building_skills,
-        "skill_list": skill_list,
-        "skills_desc": skills_desc,
-        "modules": [],
-        "skin": _portrait_url(char_id),
-    }
-
-    data_json = json.dumps(data, ensure_ascii=False)
-    return await _render(star_self, "operatorInfo.html", operator_data_json=data_json)
-
-
-def _resolve_team(tid) -> str:
-    if not tid: return ""
-    return TEAM_TABLE.get(tid, tid)
-
-
-def _parse_race(char: dict) -> str:
-    desc = char.get("description", "") or char.get("itemUsage", "") or ""
-    m = re.search(r'【(\w+)】', desc)
-    if m: return m.group(1)
-    return ""
-
-
-def _parse_drawer(char: dict) -> str:
-    return ""
-
-
-def _parse_birthday(char: dict) -> str:
-    return ""
-
-
-def _clean_trait(text: str) -> str:
-    return re.sub(r'<@[^>]+>', '', text)
-
-
-def _clean_desc(text: str) -> str:
-    return re.sub(r'<@[^>]+>', '', text)
-
-
-def _load_skill_json(gd, skill_id: str) -> dict:
-    try:
-        return gd._load_json("skill_table.json").get(skill_id, {})
-    except Exception:
-        return {}
-
-
-def _portrait_url(char_id: str) -> str:
-    """干员立绘 HTTP URL"""
-    # 触发后台下载（存本地备用，不影响返回）
-    from .resource import download_portrait
-    download_portrait(char_id)
-    return f"https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/{char_id}_1.png"

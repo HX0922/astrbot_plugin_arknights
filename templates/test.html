@@ -1,0 +1,16 @@
+<!doctype html>
+<html><head><meta charset="UTF-8"><style>
+body{font-family:sans-serif;background:#1a1a2e;color:#fff;padding:20px}
+h1{color:#ff6b6b;font-size:32px}
+.stars{color:#ffd700}
+.info{margin:10px 0;font-size:16px}
+.label{color:#888}
+</style></head>
+<body>
+<h1>{{ name }} <span class="stars">{{ stars }}</span></h1>
+<div class="info"><span class="label">职业:</span> {{ classes }}</div>
+<div class="info"><span class="label">标签:</span> {{ tags }}</div>
+<div class="info"><span class="label">生命:</span> {{ hp }} | <span class="label">攻击:</span> {{ atk }} | <span class="label">防御:</span> {{ def_ }}</div>
+<div class="info"><span class="label">天赋:</span> {{ talent }}</div>
+<div class="info"><span class="label">描述:</span> {{ desc }}</div>
+</body></html>
