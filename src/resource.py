@@ -140,22 +140,27 @@ def initialize_resource():
     root = get_resource_dir()
     root.mkdir(parents=True, exist_ok=True)
 
-    # 检查数据文件是否存在
     char_table = root / "gamedata" / "excel" / "character_table.json"
+
+    # 首次：下载数据
     if not char_table.exists():
         print("[Arknights] 首次运行，下载游戏数据...")
-        download_data_files()
-        remote = fetch_remote_version()
-        if remote:
-            write_local_version(remote)
-        print("[Arknights] 数据下载完成")
+        try:
+            download_data_files()
+            remote = fetch_remote_version()
+            if remote:
+                write_local_version(remote)
+            print("[Arknights] 数据下载完成")
+        except Exception as e:
+            print(f"[Arknights] 数据下载失败: {e}")
         return
 
-    # 检查更新
-    if needs_update():
-        print("[Arknights] 检测到数据更新，正在下载...")
-        download_data_files()
+    # 检查更新（轻量操作）
+    try:
         remote = fetch_remote_version()
-        if remote:
+        if remote and remote != read_local_version():
+            print("[Arknights] 检测到数据更新，正在下载...")
+            download_data_files()
             write_local_version(remote)
-        print("[Arknights] 数据更新完成")
+    except Exception:
+        pass  # 更新检查失败不影响使用

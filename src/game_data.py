@@ -23,23 +23,25 @@ def _find_data_root() -> Path:
     if env_path:
         return Path(env_path)
 
-    # 2. 项目 data/ArknightsGameResource
-    current = Path(__file__).resolve().parent.parent
-    candidate = current / "data" / "ArknightsGameResource"
+    # 2. 插件自己的 data 目录（最可靠）
+    plugin_root = Path(__file__).resolve().parent.parent
+    candidate = plugin_root / "data" / "ArknightsGameResource"
     if candidate.exists():
         return candidate
 
-    # 3. AstrBot 插件目录
-    from astrbot.core.utils.path_utils import get_plugin_data_dir
-    plugin_data = Path(get_plugin_data_dir("arknights"))
-    candidate = plugin_data / "ArknightsGameResource"
-    if candidate.exists():
-        return candidate
+    # 3. AstrBot 插件数据目录
+    try:
+        from astrbot.api.star import StarTools
+        plugin_data = Path(StarTools.get_data_dir())
+        candidate = plugin_data / "ArknightsGameResource"
+        if candidate.exists():
+            return candidate
+    except Exception:
+        pass
 
     raise FileNotFoundError(
         "找不到 ArknightsGameResource 数据目录。\n"
-        "请设置 AK_DATA_ROOT 环境变量，或运行:\n"
-        "  git submodule update --init --depth 1"
+        "请设置 AK_DATA_ROOT 环境变量。"
     )
 
 
