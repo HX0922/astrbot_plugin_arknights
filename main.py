@@ -18,6 +18,7 @@ from .src.gacha import GachaPool
 from .src.enemy import search_enemy, format_enemy_brief, format_enemy_index_list
 from .src.state import check_wait, wait_for
 from .src.fuzzy import FuzzyMatcher
+from .src.render import render_operator_info, render_recruit, render_enemy, render_enemy_index
 
 
 class ArknightsPlugin(Star):
@@ -86,11 +87,20 @@ class ArknightsPlugin(Star):
 
         char = data.chars[char_ids[0]]
         text = format_operator_brief(char)
-        img_path = data.get_char_image_path(char_ids[0], "portrait")
 
-        chain = [Plain(text)]
-        if img_path:
-            chain.append(Image.fromFileSystem(img_path))
+        # 优先使用 HTML 模板渲染为图片
+        try:
+            img = render_operator_info(self.context, char, char_ids[0])
+            if img:
+                chain = [Plain(text), Image.fromFileSystem(img)]
+            else:
+                chain = [Plain(text)]
+        except Exception:
+            img_path = data.get_char_image_path(char_ids[0], "portrait")
+            chain = [Plain(text)]
+            if img_path:
+                chain.append(Image.fromFileSystem(img_path))
+
         yield event.chain_result(chain)
 
     # ── /公招 ──────────────────────────────────────────
