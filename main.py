@@ -18,7 +18,7 @@ from .src.gacha import GachaPool
 from .src.enemy import search_enemy, format_enemy_brief, format_enemy_index_list
 from .src.state import check_wait, wait_for
 from .src.fuzzy import FuzzyMatcher
-from .src.render import render_operator_info, render_recruit, render_enemy, render_enemy_index
+from .src.render import render_operator_info
 
 
 class ArknightsPlugin(Star):
