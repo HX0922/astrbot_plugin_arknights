@@ -1,116 +1,152 @@
 """
-关卡查询模块
+关卡查询模块 — 对齐 AmiyaBot amiyabot-arknights-stages-2_7
 
-搜索关卡信息，包括掉落物、理智消耗、敌人等。
+提供:
+- Stage.init_stages() — 构建 jieba 词库
+- 关卡搜索 (jidba 分词 + stages_map 匹配)
+- 活动列表查询
+- 难度后缀处理 (_hard/_easy/_tough)
 """
 
-from .game_data import ArkData
+import re
+import os
+import jieba
+from .game_data import ArknightsGameData, remove_punctuation
+from .operator_core import any_match, get_index_from_text
 
 
-def search_stage(keyword: str) -> list[dict]:
-    """按 ID 或名称搜索关卡，支持难度变体"""
-    data = ArkData()
-    kw = keyword.strip()
-
-    # 难度检测
-    diff_prefix = ""
-    diff_label = ""
-    for diff_kw, (prefix, label) in DIFFICULTY_MAP.items():
-        if diff_kw in kw:
-            diff_prefix = prefix
-            diff_label = label
-            kw = kw.replace(diff_kw, "").strip()
-            break
-
-    results = data.search_stages(kw)
-
-    # 应用难度变换
-    if diff_prefix and results:
-        # 在现有结果中找匹配难度的
-        for stage in results:
-            sid = stage.get("stageId", stage.get("id", ""))
-            if diff_prefix in sid:
-                stage["_difficulty_label"] = diff_label
-                return [stage]
-        # 回退: 尝试构造难度 ID
-        stage = results[0]
-        orig_id = stage.get("stageId", "")
-        for candidate in [f"{diff_prefix}{orig_id}", f"{orig_id}{diff_prefix}"]:
-            if candidate in data.stages:
-                return [{"id": candidate, **data.stages[candidate], "_difficulty_label": diff_label}]
-
-    return results
+def create_dir(path: str, is_file: bool = False):
+    if is_file:
+        path = os.path.dirname(path)
+    if path and not os.path.exists(path):
+        os.makedirs(path)
+    return path
 
 
-DIFFICULTY_MAP = {
-    "突袭": ("_hard", "突袭"),
-    "简单": ("easy_", "简单"),
-    "剧情": ("easy_", "剧情"),
-    "困难": ("tough_", "困难"),
-    "磨难": ("tough_", "磨难"),
-}
+class Stage:
+    """关卡查询 — 对齐 AmiyaBot Stage"""
+
+    _initialized = False
+
+    @staticmethod
+    async def init_stages():
+        """构建关卡 jieba 词库"""
+        import os
+        gd = ArknightsGameData()
+        stages = list(gd.stages_map.keys()) + list(gd.side_story_map.keys())
+
+        cache_dir = "data/plugins/stages"
+        plugin_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        cache_path = os.path.join(plugin_root, cache_dir)
+        create_dir(cache_path)
+
+        dict_file = os.path.join(cache_path, "stages.txt")
+        with open(dict_file, mode="w", encoding="utf-8") as f:
+            f.write("\n".join([f"{name} 500 n" for name in stages if name]))
+
+        jieba.load_userdict(dict_file)
+        Stage._initialized = True
+
+    @classmethod
+    def search(cls, text: str) -> dict | None:
+        """搜索关卡 — 返回完整结果或 None"""
+        gd = ArknightsGameData()
+
+        level = ""
+        level_str = ""
+        if any_match(text, ["突袭"]):
+            level = "_hard"
+            level_str = "（突袭）"
+        if any_match(text, ["简单", "剧情"]):
+            level = "_easy"
+            level_str = "（剧情）"
+        if any_match(text, ["困难", "磨难"]):
+            level = "_tough"
+            level_str = "（磨难）"
+
+        words = jieba.lcut(remove_punctuation(text, ["-"]).upper().replace(" ", ""))
+        stages_map = gd.stages_map
+
+        stage_ids = []
+        for item in words:
+            stage_key = item + level
+            if stage_key in stages_map:
+                stage_ids = stages_map[stage_key]
+
+        if not stage_ids:
+            return None
+
+        if len(stage_ids) == 1:
+            stage_id = stage_ids[0]
+        else:
+            # 多个同名关卡 → 返回列表供选择
+            return {"multi": True, "stage_ids": stage_ids, "level_str": level_str}
+
+        stage_data = gd.stages.get(stage_id)
+        if not stage_data:
+            return None
+
+        res = {
+            **stage_data,
+            "name": stage_data["name"] + level_str,
+            "zones": 0,
+        }
+
+        if level == "_easy":
+            main_level = gd.stages.get(stage_id.replace("easy", "main"))
+            if main_level:
+                res["levelData"] = main_level.get("levelData")
+
+        # 替换地图 ID（简化版：不做 map path 处理）
+        res["stageId"] = stage_id.replace("#f#", "")
+
+        return {"multi": False, "result": res}
+
+    @classmethod
+    def search_activity(cls, text: str):
+        """搜索活动"""
+        gd = ArknightsGameData()
+        words = jieba.lcut(remove_punctuation(text, ["-"]).upper().replace(" ", ""))
+        side_story_map = gd.side_story_map
+
+        for key in words:
+            if key in side_story_map:
+                return {key: side_story_map[key]}
+
+        # 活动列表
+        if "活动" in text:
+            return {act: data for act, data in reversed(side_story_map.items())}
+
+        return None
 
 
 def format_stage_info(stage: dict) -> str:
-    """格式化关卡详细信息"""
-    stage_id = stage.get("stageId", stage.get("id", ""))
-    code = stage.get("code", stage_id)
-    name = stage.get("name", "")
-    stage_type = stage.get("stageType", "")
-    difficulty = stage.get("difficulty", "NORMAL")
-
+    """格式化关卡信息为纯文本"""
+    code = stage.get("code", "") or ""
+    name = stage.get("name", "") or ""
+    ap = stage.get("apCost", "?")
+    diff = stage.get("difficulty", "")
+    
     lines = [
         f"【{code}】{name}",
-        f"类型: {stage_type} | 难度: {difficulty}",
+        f"理智消耗: {ap}",
     ]
 
-    # 理智消耗
-    ap_cost = stage.get("apCost", "?")
-    lines.append(f"消耗理智: {ap_cost}")
-
-    # 掉落物
-    drops = _get_drop_info(stage)
+    if diff:
+        lines.append(f"难度: {diff}")
+    
+    drops = stage.get("dropInfos", [])
     if drops:
-        lines.append(f"主要掉落: {', '.join(drops[:8])}")
-
-    # 特殊掉落
-    extra = _get_extra_drop(stage)
-    if extra:
-        lines.append(f"额外掉落: {', '.join(extra[:5])}")
-
-    # 敌人信息
-    enemies = stage.get("enemyData", [])
-    if enemies:
-        enemy_count = len(enemies)
-        lines.append(f"敌人数量: {enemy_count}")
+        lines.append("掉落:")
+        for d in drops[:10]:
+            item = d.get("itemName") or d.get("info", {}).get("material_name", "")
+            if item:
+                lines.append(f"  · {item}")
+    
+    level_data = stage.get("levelData")
+    if level_data:
+        enemies = level_data.get("enemy", [])
+        if enemies:
+            lines.append(f"敌人数量: {len(enemies)}")
 
     return "\n".join(lines)
-
-
-def _get_drop_info(stage: dict) -> list[str]:
-    """提取掉落物名称列表"""
-    data = ArkData()
-    drop_names = []
-
-    # 普通掉落
-    drops = stage.get("dropInfos", [])
-    for drop in drops:
-        item_id = drop.get("itemId", "")
-        if item_id and item_id in data.items:
-            drop_names.append(data.items[item_id].get("name", item_id))
-
-    return drop_names
-
-
-def _get_extra_drop(stage: dict) -> list[str]:
-    """提取额外掉落"""
-    data = ArkData()
-    drop_names = []
-
-    extra = stage.get("extraDropInfos", [])
-    for drop in extra:
-        item_id = drop.get("itemId", "")
-        if item_id and item_id in data.items:
-            drop_names.append(data.items[item_id].get("name", item_id))
-
-    return drop_names

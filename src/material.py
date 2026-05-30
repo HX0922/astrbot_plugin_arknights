@@ -1,107 +1,122 @@
 """
-材料/物品查询模块
+材料/物品查询模块 — 完整对齐 AmiyaBot MaterialData
 
-搜索材料和物品，提供用途、获取关卡、合成配方等信息。
+提供 MaterialData 类:
+- init_materials(): 初始化材料名称列表
+- check_material(name): 返回材料完整信息（info/children/source/recommend）
+- find_material_children(material_id): 递归构建合成树
+
+对齐 AmiyaBot 插件 amiyabot-arknights-material-2_8/main.py
+不集成 yituliu 数据库（AstrBot 无 peewee），recommend 恒返回空列表。
 """
 
-from .game_data import ArkData
+from typing import List, Dict
+from .game_data import ArknightsGameData
 
 
-def search_material(keyword: str) -> list[dict]:
-    """模糊搜索材料"""
-    return ArkData().search_items(keyword)
+class MaterialData:
+    """材料数据查询 — 对齐 AmiyaBot MaterialData
 
+    用法:
+        await MaterialData.init_materials()
+        result = MaterialData.check_material("固源岩")
+    """
 
-def format_material_info(item: dict) -> str:
-    """格式化材料详细信息"""
-    name = item.get("name", "未知")
-    item_id = item.get("id", "")
-    rarity = item.get("rarity", 0)
-    stars = "★" * (rarity + 1) if rarity < 5 else "★★★★★"
+    materials: List[str] = []
 
-    lines = [f"【{name}】{stars}", f"ID: {item_id}"]
+    @staticmethod
+    async def init_materials():
+        """初始化材料名称列表（从游戏数据构建）"""
+        gd = ArknightsGameData()
+        MaterialData.materials = list(gd.materials_map.keys())
 
-    # 用途
-    usage = item.get("usage", "")
-    if usage:
-        lines.append(f"用途: {usage}")
+    @classmethod
+    def find_material_children(cls, material_id: str, parent_id: str = "") -> list:
+        """递归查找材料的子材料（合成配方树）
 
-    # 描述
-    desc = item.get("description", "")
-    if desc:
-        lines.append(f"描述: {desc}")
+        Args:
+            material_id: 材料 ID
+            parent_id:  父材料 ID，用于避免循环引用
 
-    # 获取方式
-    obtain = item.get("obtainApproach", "")
-    if obtain:
-        lines.append(f"获取方式: {obtain}")
+        Returns:
+            list of dict: 每个 child 包含 use_material_id, use_number,
+                          material_name, material_icon, material_desc, rarity,
+                          以及嵌套的 children
+        """
+        game_data = ArknightsGameData()
+        children = []
 
-    # 制造信息
-    build = item.get("buildingProductList", [])
-    if build:
-        for b in build[:3]:
-            room = b.get("roomType", "")
-            formula = b.get("formulaId", "")
-            count = b.get("count", 1)
-            lines.append(f"制造: {room} | 配方: {formula} | 产出: {count}")
+        if material_id in game_data.materials_made:
+            for item in game_data.materials_made[material_id]:
+                child_mat = game_data.materials.get(item["use_material_id"], {})
+                children.append(
+                    {
+                        **item,
+                        **child_mat,
+                        "children": (
+                            cls.find_material_children(
+                                item["use_material_id"], material_id
+                            )
+                            if item["use_material_id"] != parent_id
+                            else []
+                        ),
+                    }
+                )
 
-    # 合成树（递归查找子材料）
-    tree = _build_craft_tree(item_id, max_depth=3)
-    if tree:
-        lines.append(f"\n【合成路径】")
-        lines.append(_format_tree(tree, indent=0))
+        return children
 
-    return "\n".join(lines)
+    @classmethod
+    def check_material(cls, name: str) -> dict | None:
+        """根据材料名称查询完整信息
 
+        Args:
+            name: 材料中文名（如 "固源岩"）
 
-def _build_craft_tree(item_id: str, max_depth: int = 3, depth: int = 0) -> list | None:
-    """递归构建合成树"""
-    if depth >= max_depth:
-        return None
+        Returns:
+            dict: {
+                "name": str,          # 材料名
+                "info": dict,         # 材料基础信息 (material_id, material_name, ...)
+                "children": list,     # 合成子材料树（递归）
+                "source": {           # 获取来源（按主线和活动分类）
+                    "main": [{"code", "name", "rate"}, ...],
+                    "act":  [{"code", "name", "rate"}, ...],
+                },
+                "recommend": list,    # 推荐关卡（始终为空，不集成 yituliu）
+            }
+            找不到材料时返回 None
+        """
+        game_data = ArknightsGameData()
 
-    data = ArkData()
-    # 查找合成配方
-    for bid, bdata in data._load_json("building_data.json").get("workshopFormulas", {}).items():
-        if bdata.get("itemId") == item_id and bdata.get("itemCount", 0) > 0:
-            costs = bdata.get("costs", [])
-            children = []
-            for cost in costs:
-                child_id = cost.get("id", "")
-                child_count = cost.get("count", 0)
-                child_name = data.items.get(child_id, {}).get("name", child_id)
-                subtree = _build_craft_tree(child_id, max_depth, depth + 1)
-                children.append({
-                    "name": child_name,
-                    "id": child_id,
-                    "count": child_count,
-                    "children": subtree,
-                })
-            return children
-    return None
+        if name not in game_data.materials_map:
+            return None
 
+        material_id = game_data.materials_map[name]
+        material = game_data.materials[material_id]
 
-def _format_tree(children: list, indent: int = 0) -> str:
-    """格式化合成树为文本缩进结构"""
-    lines = []
-    prefix = "  " * indent
-    for child in children:
-        lines.append(f"{prefix}├ {child['count']}× {child['name']}")
-        if child.get("children"):
-            lines.append(_format_tree(child["children"], indent + 1))
-    return "\n".join(lines)
+        result: dict = {
+            "name": name,
+            "info": material,
+            "children": cls.find_material_children(material_id),
+            "source": {"main": [], "act": []},
+            "recommend": [],
+        }
 
+        # ── 构建来源（掉落关卡） ─────────────────────────
+        if material_id in game_data.materials_source:
+            source_data = game_data.materials_source[material_id]
+            for code in source_data.keys():
+                if code not in game_data.stages:
+                    continue
+                stage = game_data.stages[code]
+                info = {
+                    "code": stage["code"],
+                    "name": stage["name"],
+                    "rate": source_data[code]["source_rate"],
+                }
+                # 对齐 AmiyaBot 分类: stage_id 含 "main" 为主线，否则为活动
+                if "main" in code:
+                    result["source"]["main"].append(info)
+                else:
+                    result["source"]["act"].append(info)
 
-def format_material_list(items: list[dict], max_display: int = 10) -> str:
-    """格式化材料搜索结果列表"""
-    if not items:
-        return "未找到匹配的材料。"
-
-    lines = [f"找到 {len(items)} 个匹配材料:"]
-    for item in items[:max_display]:
-        stars = "★" * (item.get("rarity", 0) + 1)
-        lines.append(f"  {stars} {item['name']} ({item.get('id', '')})")
-
-    if len(items) > max_display:
-        lines.append(f"  ... 还有 {len(items) - max_display} 个结果")
-
-    return "\n".join(lines)
+        return result

@@ -1,19 +1,13 @@
 """
-卡池模拟模块
+卡池模拟模块 — 对齐 AmiyaBot 抽卡逻辑
 
-模拟明日方舟标准寻访卡池抽卡逻辑。
-
-核心机制:
-  - 6★: 2% (基础), 5★: 8%, 4★: 50%, 3★: 40%
-  - 软保底: 50 抽后每抽 6★ 概率 +2%
-  - 硬保底: 99 抽必出 6★
-  - 十连保底: 至少 1 个 5★+
-
-数据源: character_table.json (所有干员按稀有度分组)
+使用 Operator 对象。
+rarity 显示为 1-6 星。
 """
 
 import random
-from .game_data import ArkData
+from typing import List
+from .game_data import ArknightsGameData
 
 
 class GachaPool:
@@ -27,23 +21,22 @@ class GachaPool:
     SOFT_PITY_INCREMENT = 0.02
 
     def __init__(self, pool_type: str = "standard"):
-        self.data = ArkData()
+        self.data = ArknightsGameData()
         self.pool_type = pool_type
         self.pity_counter = 0
-        self._rarity_pools = {}
+        self._rarity_pools: dict[int, List[str]] = {}
         self._load_pool()
 
     def _load_pool(self):
-        """从 character_table 按稀有度分组"""
-        self._rarity_pools = {0: [], 1: [], 2: [], 3: [], 4: [], 5: []}
-
-        for char_id, char in self.data.chars.items():
-            rarity = char.get("rarity", -1)
-            if rarity in self._rarity_pools:
-                self._rarity_pools[rarity].append(char_id)
+        """从 operators 按稀有度分组 (rarity: 1-6)"""
+        self._rarity_pools = {1: [], 2: [], 3: [], 4: [], 5: [], 6: []}
+        for name, op in self.data.operators.items():
+            if op.rarity in self._rarity_pools:
+                self._rarity_pools[op.rarity].append(op.id)
 
     def single_pull(self) -> dict:
         """单抽"""
+        self.pity_counter += 1
         effective_rate = self.SIX_STAR_BASE
         if self.pity_counter >= self.SOFT_PITY_START:
             effective_rate += (
@@ -54,17 +47,16 @@ class GachaPool:
         roll = random.random()
 
         if roll < effective_rate or self.pity_counter >= self.HARD_PITY:
-            rarity = 5  # 6★
+            rarity = 6  # 6★
             self.pity_counter = 0
         elif roll < effective_rate + self.FIVE_STAR_BASE:
-            rarity = 4  # 5★
+            rarity = 5  # 5★
         elif roll < effective_rate + self.FIVE_STAR_BASE + self.FOUR_STAR_PROB:
-            rarity = 3  # 4★
+            rarity = 4  # 4★
         elif roll < effective_rate + self.FIVE_STAR_BASE + self.FOUR_STAR_PROB + 0.40:
-            rarity = 2  # 3★
+            rarity = 3  # 3★
         else:
-            rarity = 1  # 2★
-            self.pity_counter += 1
+            rarity = 2  # 2★ (fallback)
 
         return self._pick_operator(rarity)
 
@@ -79,7 +71,7 @@ class GachaPool:
                 has_high_rarity = True
 
         if not has_high_rarity:
-            results[-1] = self._pick_operator(4)
+            results[-1] = self._pick_operator(5)
 
         return results
 
@@ -87,21 +79,31 @@ class GachaPool:
         """从稀有度池随机选干员"""
         pool = self._rarity_pools.get(rarity, [])
         if not pool:
-            # fallback: try adjacent rarity
             for r in [rarity - 1, rarity + 1, rarity - 2]:
                 if r in self._rarity_pools and self._rarity_pools[r]:
                     pool = self._rarity_pools[r]
                     break
 
         if not pool:
-            return {"name": "未知干员", "rarity": rarity + 1, "char_id": "",
-                    "profession": ""}
+            return {
+                "name": "未知干员",
+                "rarity": rarity,
+                "char_id": "",
+                "profession": "",
+            }
 
         char_id = random.choice(pool)
-        char = self.data.chars.get(char_id, {})
+        op = self.data.operators.get(
+            next((n for n, o in self.data.operators.items() if o.id == char_id), ""),
+            None,
+        )
+
+        if op is None:
+            return {"name": char_id, "rarity": rarity, "char_id": char_id, "profession": ""}
+
         return {
-            "name": char.get("name", "未知"),
-            "rarity": rarity + 1,  # 0-index → 1-6 星显示
+            "name": op.name,
+            "rarity": rarity,
             "char_id": char_id,
-            "profession": char.get("profession", ""),
+            "profession": op.classes,
         }

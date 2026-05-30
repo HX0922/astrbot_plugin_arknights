@@ -35,6 +35,10 @@ DATA_FILES = [
     "gamedata/excel/enemy_handbook_table.json",
     "gamedata/excel/uniequip_table.json",
     "gamedata/excel/building_data.json",
+    "gamedata/excel/favor_table.json",
+    "gamedata/excel/handbook_info_table.json",
+    "gamedata/excel/charword_table.json",
+    "gamedata/excel/token_table.json",
 ]
 
 # 每次查询自动检查间隔
