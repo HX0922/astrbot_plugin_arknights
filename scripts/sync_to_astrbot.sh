@@ -2,7 +2,7 @@
 # 同步插件到 AstrBot 插件目录
 # 用法: bash sync_to_astrbot.sh
 
-SRC="/mnt/g/Coding/projects/astrbot_plugin_arknights"
+SRC="/mnt/d/Documents/projects/astrbot_arknights"
 DST="/mnt/c/Users/HX/.astrbot/data/plugins/astrbot_plugin_arknights"
 
 # Clean destination first to avoid nested copies

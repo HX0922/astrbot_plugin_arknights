@@ -67,7 +67,7 @@
                     <div class="title" style="width: 120px">潜能提升</div>
                     <div class="potential" v-for="item in data.potential">
                         <img style="width: 25px;margin-right: 10px"
-                             :src="'../rank/' + (item.potential_rank + 1) + '.png'"
+                             :src="'../templates/img/rank/' + (item.potential_rank + 1) + '.png'"
                              alt="rank">
                         {{ item.potential_desc }}
                     </div>
@@ -97,7 +97,7 @@
                 <div class="class-info">
                     <div style="width: 60px;padding: 5px;background: #000">
                         <img style="width: 100%"
-                             :src="'../classify/' + classesIcons[data.info.classes]"
+                             :src="'../templates/img/classify/' + classesIcons[data.info.classes]"
                              alt="classify">
                     </div>
                     <div class="rarity">

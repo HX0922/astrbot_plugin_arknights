@@ -9,6 +9,15 @@ import re
 from pathlib import Path
 from typing import List, Dict, Tuple, Any, Optional
 
+try:
+    import orjson as _orjson
+    def _json_loads(data): return _orjson.loads(data)
+except ImportError:
+    _orjson = None
+    def _json_loads(data): return json.loads(data.decode("utf-8"))
+
+_JSON_CACHE = {}
+
 STR_DICT = Dict[str, Any]
 LIST_STR_DICT = List[STR_DICT]
 
@@ -33,6 +42,12 @@ def integer(value):
     if isinstance(value, float) and int(value) == value:
         return int(value)
     return value
+
+
+def snake_case_to_pascal_case(snake_case: str):
+    """将 snake_case 转为 camelCase"""
+    words = snake_case.split('_')
+    return ''.join(word.title() if i > 0 else word.lower() for i, word in enumerate(words))
 
 
 def remove_xml_tag(text: str) -> str:
@@ -61,7 +76,7 @@ def parse_template(blackboard: list, description: str) -> str:
     }
 
     desc = html_tag_format(description.replace(">-{", ">{"))
-    format_str = re.findall(r"({(\\S+?)})", desc)
+    format_str = re.findall(r"({([^}]+)})", desc)
     if format_str:
         for desc_item in format_str:
             key = desc_item[1].split(":")
@@ -127,11 +142,11 @@ class Operator:
         self._gamedata = self._data_root / "gamedata" / "excel"
 
         # ── 加载子数据表 ──
-        sub_prof_dict = self._load_json("uniequip_table").get("subProfDict", {})
-        character_table = self._load_json("character_table")
-        team_table = self._load_json("handbook_team_table")
-        item_table = self._load_json("item_table").get("items", {})
-        range_table = self._load_json("range_table")
+        sub_prof_dict = self._load_json("uniequip_table.json").get("subProfDict", {})
+        character_table = self._load_json("character_table.json")
+        team_table = self._load_json("handbook_team_table.json")
+        item_table = self._load_json("item_table.json").get("items", {})
+        range_table = self._load_json("range_table.json")
 
         data["name"] = data.get("name", "").strip()
 
@@ -199,7 +214,7 @@ class Operator:
         self.tags = (data.get("tagList") or []) + tags
 
         # ── CV ──
-        word_data = self._load_json("charword_table")
+        word_data = self._load_json("charword_table.json")
         if code in word_data.get("voiceLangDict", {}):
             voice_lang = word_data["voiceLangDict"][code].get("dict", {})
             self.cv = {
@@ -220,6 +235,9 @@ class Operator:
                 r = re.search(r"\n【种族】.*?(\S+).*?\n", story.get("story_text", ""))
                 if r:
                     self.race = str(r.group(1))
+                r = re.search(r"【生日】(\S+)", story.get("story_text", ""))
+                if r:
+                    self.birthday = str(r.group(1))
                 break
 
         # ── 画师（从皮肤提取） ──
@@ -232,7 +250,7 @@ class Operator:
                 self.drawer = drawers[-1]
 
         # ── 真名（从 char_meta_table 异格组提取） ──
-        sp_char = self._load_json("char_meta_table").get("spCharGroups", {})
+        sp_char = self._load_json("char_meta_table.json").get("spCharGroups", {})
         for oid, group in sp_char.items():
             if code in group:
                 self.origin_name = character_table.get(oid, {}).get("name", "未知")
@@ -252,18 +270,23 @@ class Operator:
     # ════════════════════════════════════════════════════
 
     def _load_json(self, filename: str) -> dict:
+        if filename in _JSON_CACHE:
+            return _JSON_CACHE[filename]
         path = self._gamedata / filename
         if not path.exists():
+            _JSON_CACHE[filename] = {}
             return {}
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
+            with open(path, "rb") as f:
+                data = _json_loads(f.read())
         except Exception:
-            return {}
+            data = {}
+        _JSON_CACHE[filename] = data
+        return data
 
     def _raw_stories(self) -> list:
         """从 handbook_info_table 获取原始档案"""
-        stories_data = self._load_json("handbook_info_table").get("handbookDict", {})
+        stories_data = self._load_json("handbook_info_table.json").get("handbookDict", {})
         if self.id in stories_data:
             result = []
             for item in stories_data[self.id].get("storyTextAudio", []):
@@ -288,7 +311,7 @@ class Operator:
 
     def _build_voice_list(self, code: str) -> list:
         """构建语音列表"""
-        cw = self._load_json("charword_table").get("charWords", {})
+        cw = self._load_json("charword_table.json").get("charWords", {})
         result = []
         for wid, wd in cw.items():
             if wd.get("charId") == code:
@@ -313,7 +336,7 @@ class Operator:
 
     def detail(self) -> Tuple[STR_DICT, STR_DICT]:
         """对齐 AmiyaBot detail() — 返回 (属性, favorKeyFrames 信赖加成)"""
-        items = self._load_json("item_table").get("items", {})
+        items = self._load_json("item_table.json").get("items", {})
 
         token_id = "p_" + self.id
         token = items.get(token_id, {})
@@ -386,8 +409,8 @@ class Operator:
         self,
     ) -> Tuple[LIST_STR_DICT, List[str], LIST_STR_DICT, Dict[str, LIST_STR_DICT]]:
         """对齐 AmiyaBot skills()"""
-        skill_data = self._load_json("skill_table")
-        range_data = self._load_json("range_table")
+        skill_data = self._load_json("skill_table.json")
+        range_data = self._load_json("range_table.json")
 
         skills: LIST_STR_DICT = []
         skills_id: List[str] = []
@@ -473,7 +496,7 @@ class Operator:
 
     def building_skills(self) -> LIST_STR_DICT:
         """对齐 AmiyaBot building_skills()"""
-        building_data = self._load_json("building_data")
+        building_data = self._load_json("building_data.json")
         building_skills = building_data.get("buffs", {})
 
         skills = []
@@ -547,8 +570,8 @@ class Operator:
 
     def modules(self) -> LIST_STR_DICT:
         """对齐 AmiyaBot modules()"""
-        equips = self._load_json("uniequip_table")
-        equips_battle = self._load_json("battle_equip_table")
+        equips = self._load_json("uniequip_table.json")
+        equips_battle = self._load_json("battle_equip_table.json")
 
         equips_rel = equips.get("charEquip", {})
         modules_list = equips.get("equipDict", {})
@@ -574,8 +597,8 @@ class Operator:
 
     def tokens(self) -> dict:
         """对齐 AmiyaBot tokens() — 返回 {id: detail_dict}"""
-        skill_table = self._load_json("skill_table")
-        character_table = self._load_json("character_table")
+        skill_table = self._load_json("skill_table.json")
+        character_table = self._load_json("character_table.json")
 
         token_list = {}
 

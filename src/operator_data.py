@@ -218,7 +218,7 @@ class OperatorData:
             return None
 
         if is_story:
-            return cls._find_operator_module_story(modules)
+            return cls.find_operator_module_story(modules)
 
         # 解析模组的 trait 和 talent 数据
         def parse_trait_data(data):
@@ -273,7 +273,7 @@ class OperatorData:
         return modules
 
     @staticmethod
-    def _find_operator_module_story(modules: list) -> str:
+    def find_operator_module_story(modules: list) -> str:
         text = ""
         for item in modules:
             text += f"\n\n## {item.get('uniEquipName', '')}\n\n"

@@ -33,15 +33,22 @@ def _get_playwright():
 
 
 async def _get_browser():
-    """获取复用的 Playwright Chromium 实例（对齐 AmiyaBot 复用模式）"""
+    """获取复用的 Playwright 浏览器实例（优先使用系统 Chrome/Edge）"""
     global _browser
     if _browser is None:
         pw = _get_playwright()
         p = await pw().__aenter__()
-        _browser = await p.chromium.launch(
-            headless=True,
-            args=["--no-sandbox"],
-        )
+        # 尝试系统 Chrome → Edge → 默认 Chromium
+        for channel in ["chrome", "msedge", None]:
+            try:
+                _browser = await p.chromium.launch(
+                    headless=True,
+                    args=["--no-sandbox"],
+                    channel=channel,
+                )
+                break
+            except Exception:
+                continue
     return _browser
 
 

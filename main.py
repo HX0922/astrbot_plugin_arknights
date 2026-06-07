@@ -63,19 +63,22 @@ class _Router:
         matched = []
         for route in self._routes:
             if route.verify:
-                if asyncio.iscoroutinefunction(route.verify):
-                    verified, keypoint = await route.verify(text)
+                result = await route.verify(text) if asyncio.iscoroutinefunction(route.verify) else route.verify(text)
+                # AmiyaBot verify 返回 (bool, level, info) 三元组
+                if isinstance(result, tuple) and len(result) >= 3:
+                    verified, level, keypoint = result[0], result[1], result[2]
                 else:
-                    verified, keypoint = route.verify(text)
-                if verified: matched.append((route, keypoint))
-            elif route.keywords and any_match(text, route.keywords):
-                matched.append((route, None))
+                    verified, keypoint = result if len(result) == 2 else (result[0], None)
+                    level = route.level
+                if verified: matched.append((route, level, keypoint))
+            elif route.keywords is not None and (any_match(text, route.keywords) if route.keywords else True):
+                matched.append((route, route.level, None))
         if not matched:
             return None
-        matched.sort(key=lambda x: -x[0].level)
-        best_route, keypoint = matched[0]
+        matched.sort(key=lambda x: -x[1])
+        best_route, _, keypoint = matched[0]
         try:
-            return await best_route.handler(event, keypoint)
+            return best_route.handler(event, keypoint)
         except Exception as e:
             logger.error(f"[Arknights] Handler error: {e}", exc_info=True)
             return None
@@ -138,7 +141,9 @@ class ArknightsPlugin(Star):
     # ── AstrBot 表面命令入口 ──────────────────────────
 
     @filter.command("角色")
-    async def cmd_character(self, event): return await self._route_dispatch(event)
+    async def cmd_character(self, event):
+        async for item in self._route_dispatch(event):
+            yield item
 
     @filter.command("公招")
     async def cmd_recruit(self, event):
@@ -276,15 +281,20 @@ class ArknightsPlugin(Star):
                     if img: yield event.chain_result([Image.fromFileSystem(img)])
                     else: yield event.plain_result("渲染失败")
 
-    @filter.regex(r"^(?![/!！])")
-    async def handle_natural(self, event): return await self._route_dispatch(event)
+    @filter.regex(r"^(?![/!！]|角色|公招|抽卡|材料|关卡|敌人|arkhelp)")
+    async def handle_natural(self, event):
+        async for item in self._route_dispatch(event):
+            yield item
 
     async def _route_dispatch(self, event):
         result = await router.dispatch(event)
-        if result is None: return
+        if result is None:
+            return
         if hasattr(result, "__aiter__"):
-            async for item in result: yield item
-        elif result is not None: yield result
+            async for item in result:
+                yield item
+        elif result is not None:
+            yield result
 
 
 # ════════════════════════════════════════════════════════

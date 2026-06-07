@@ -16,6 +16,17 @@ import re
 import string
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
+
+try:
+    import orjson
+
+    def _json_loads(data: bytes) -> dict:
+        return orjson.loads(data)
+except ImportError:
+    orjson = None
+
+    def _json_loads(data: bytes) -> dict:
+        return json.loads(data.decode("utf-8"))
 from .operator_model import Operator, parse_template
 
 
@@ -26,6 +37,8 @@ _CN_PUNCTUATION = (
     '\u300e\u300f\u3008\u3009\u3010\u3011\uff3b\uff3d'
     '\u2014\u2015\u2026\u2025\uff5e\uffe5'
 )
+
+RARITY_STARS = {1: "★", 2: "★★", 3: "★★★", 4: "★★★★", 5: "★★★★★", 6: "★★★★★★"}
 
 
 def remove_punctuation(text: str, ignore: list = None) -> str:
@@ -87,24 +100,50 @@ class ArknightsGameResource:
     def get_skin_file(
         cls, skin_item: dict, encode_url: bool = False
     ) -> str:
-        """获取立绘文件路径"""
+        """获取完整精二立绘 — PRTS Wiki 下载 + 本地缓存
+
+        AmiyaBot 方式: 从 skinUrls.json (PRTS Wiki URL) 下载立绘，
+        缓存到 data/ArknightsGameResource/skin/{skin_id}.png
+        """
         if not skin_item:
             return ""
 
-        char_id = skin_item.get("char_id", "")
-        skin_id = skin_item.get("skin_id", char_id)
+        skin_id = skin_item.get("skin_id", "")
+        if not skin_id:
+            return ""
 
         root = cls.get_data_root()
-        portrait_dir = root / "portrait"
+        skin_dir = root / "skin"
+        skin_dir.mkdir(parents=True, exist_ok=True)
+        cache_path = skin_dir / f"{skin_id}.png"
 
-        # 查找立绘文件
-        for suffix in ["_2", "_1", ""]:
-            path = portrait_dir / f"{char_id}{suffix}.png"
-            if path.exists():
-                result = str(path)
-                if encode_url:
-                    result = result.replace("#", "%23")
-                return result
+        if not cache_path.exists():
+            # 从 skinUrls.json 获取 PRTS Wiki URL
+            indexes_path = root / "indexes" / "skinUrls.json"
+            url = None
+            if indexes_path.exists():
+                try:
+                    import json
+                    with open(indexes_path, "r", encoding="utf-8") as f:
+                        indexes = json.load(f)
+                    char_id = skin_id.split("#")[0].split("@")[0]
+                    if char_id in indexes and skin_id in indexes[char_id]:
+                        url = indexes[char_id][skin_id]
+                except Exception:
+                    pass
+            
+            if url:
+                try:
+                    import urllib.request
+                    urllib.request.urlretrieve(url, str(cache_path))
+                except Exception:
+                    pass
+
+        if cache_path.exists():
+            result = f"skin/{skin_id}.png"
+            if encode_url:
+                result = result.replace("#", "%23")
+            return result
 
         return ""
 
@@ -264,8 +303,8 @@ class ArknightsGameData:
         if not path.exists():
             return {}
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
+            with open(path, "rb") as f:
+                return _json_loads(f.read())
         except Exception:
             return {}
 
@@ -275,8 +314,8 @@ class ArknightsGameData:
         if not path.exists():
             return {}
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
+            with open(path, "rb") as f:
+                return _json_loads(f.read())
         except Exception:
             return {}
 
@@ -435,8 +474,8 @@ class ArkData:
         if not path.exists():
             return {}
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
+            with open(path, "rb") as f:
+                return _json_loads(f.read())
         except Exception:
             return {}
 

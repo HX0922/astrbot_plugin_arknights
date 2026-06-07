@@ -1,4 +1,4 @@
-const gamedataPath = '../../../'
+const gamedataPath = '../data/ArknightsGameResource/'
 
 const classesIcons = {
     '术师': 'caster.png',
@@ -70,17 +70,17 @@ function range(text) {
 }
 
 function itemIconPath(itemIcon) {
-    return gamedataPath + 'resource/gamedata/item/' + itemIcon + '.png'
+    return gamedataPath + 'item/' + itemIcon + '.png'
 }
 
 function avatarIconPath(avatarIcon) {
-    return gamedataPath + 'resource/gamedata/avatar/' + avatarIcon + '.png'
+    return gamedataPath + 'avatar/' + avatarIcon + '.png'
 }
 
 function skillIconPath(skillIcon) {
-    return gamedataPath + 'resource/gamedata/skill/' + skillIcon + '.png'
+    return gamedataPath + 'skill/' + skillIcon + '.png'
 }
 
 function buildingSkillIconPath(bsIcon) {
-    return gamedataPath + 'resource/gamedata/building_skill/' + bsIcon + '.png'
+    return gamedataPath + 'building_skill/' + bsIcon + '.png'
 }

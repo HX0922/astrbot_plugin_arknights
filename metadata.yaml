@@ -1,7 +1,7 @@
 name: astrbot_plugin_arknights
 display_name: 明日方舟数据查询
 desc: "明日方舟游戏数据查询插件 — 干员/公招/抽卡/材料/关卡/敌人，从 AmiyaBot V6 迁移"
-version: v0.1.0
+version: v0.2.0
 author: HX
 astrbot_version: ">=4.16.0"
 support_platforms:

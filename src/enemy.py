@@ -16,13 +16,7 @@
 
 from collections import Counter
 from .game_data import ArknightsGameData
-
-
-def _integer(value):
-    """对齐 AmiyaBot core.util.integer: 整数化浮点值"""
-    if type(value) is float and int(value) == value:
-        value = int(value)
-    return value
+from .operator_model import integer
 
 
 # ── 等级 / 伤害类型中文名 ──────────────────────────────
@@ -166,25 +160,17 @@ class Enemy:
 
     @classmethod
     def get_value(cls, key: str, source: dict) -> tuple:
-        """嵌套字典值遍历 — 对齐 AmiyaBot
+        """嵌套字典值遍历 — 严格对齐 AmiyaBot
 
         按 '.' 分割 key 逐层进入 source dict，
         返回 (m_defined, m_value) 元组。
 
-        Args:
-            key: 点分隔的路径，如 'attributes.maxHp'
-            source: 源字典
-
-        Returns:
-            (defined: bool, value: int|float)
+        AmiyaBot 原版不处理 KeyError（数据保证完整性）。
         """
         for item in key.split("."):
             if item in source:
                 source = source[item]
-            else:
-                # 路径中途中断，返回默认值
-                return False, 0
-        return source.get("m_defined", False), _integer(source.get("m_value", 0))
+        return source["m_defined"], integer(source["m_value"])
 
 
 # ═══════════════════════════════════════════════════════════

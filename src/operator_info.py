@@ -135,7 +135,7 @@ class OperatorInfo:
         for name, op in ArknightsGameData().operators.items():
             for skin in op.skins():
                 skin_name = skin.get("skin_name", "")
-                if skin_name in ["初始", "默认"]:
+                if skin_name in ["初始", "精英一", "精英二"]:
                     continue
                 skins_map[skin_name] = skin
 

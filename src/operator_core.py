@@ -15,9 +15,11 @@ import difflib
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
 
-from .game_data import ArknightsGameData
-from .operator_model import Operator, remove_punctuation
+from .game_data import ArknightsGameData, remove_punctuation
+from .operator_model import Operator
 from .operator_info import OperatorInfo
+
+default_level = 8
 
 
 # ── 工具函数（对齐 core/util/common.py）─────────────────
@@ -154,13 +156,18 @@ class OperatorSearchInfo:
 # ── 消息验证 ──────────────────────────────────────────
 
 class FuncsVerify:
-    """消息触发验证 — 对齐 AmiyaBot FuncsVerify"""
+    """消息触发验证 — 严格对齐 AmiyaBot FuncsVerify
+
+    AmiyaBot 原版返回三元组: (bool, level, info)
+    - level 用于路由优先级，default_level +/- offset
+    - info 为 OperatorSearchInfo 实例
+    """
 
     @classmethod
     async def level_up(cls, data_text: str) -> tuple:
         info = search_info(data_text, source_keys=["name"])
         condition = any_match(data_text, ["精英", "专精", "材料"])
-        return bool(condition), info
+        return bool(condition), default_level + 2, info
 
     @classmethod
     async def operator(cls, data_text: str, block_mishap: bool = True) -> tuple:
@@ -169,22 +176,20 @@ class FuncsVerify:
 
         flag = True
         if block_mishap:
-            # blockMishap 模式：文本不能等于纯干员名触发，需要带关键词
-            # AmiyaBot 原版检查: info.name != data.text and '查询' not in data.text
             if info.name and info.name != data_text and "查询" not in data_text:
                 flag = bool(condition)
 
         if flag:
-            return bool(info.name), info
+            return bool(info.name), default_level - 1, info
         else:
-            return False, info
+            return False, 0, info
 
     @classmethod
     async def group(cls, data_text: str) -> tuple:
         info = search_info(data_text, source_keys=["group_key"])
         if info.group_key and info.group_key != data_text and "查询" not in data_text:
-            return False, info
-        return bool(info.group_key), info
+            return False, 0, info
+        return bool(info.group_key), default_level + 1, info
 
 
 # ── 查询匹配 ──────────────────────────────────────────
@@ -193,18 +198,16 @@ def search_info(
     data_text: str,
     data_text_words: Optional[List[str]] = None,
     source_keys: Optional[list] = None,
-    similar_mode: bool = True,
-    length_limit: int = 50,
 ) -> OperatorSearchInfo:
     """核心查询匹配 — 严格对齐 AmiyaBot operatorCore.search_info()
 
     Args:
-        data_text: 原始消息文本
-        data_text_words: jieba 分词结果
+        data_text: 原始消息文本 (AmiyaBot: data.text)
+        data_text_words: jieba 分词结果 (AmiyaBot: data.text_words)
         source_keys: 查询目标 key 列表 ['name', 'skin_key', ...]
-        similar_mode: True → find_most_similar, False → get_longest
-        length_limit: 文本长度限制
     """
+    similar_mode = True      # AmiyaBot: bot.get_config('searchSetting')['similarMode']
+    length_limit = 50         # AmiyaBot: bot.get_config('searchSetting')['lengthLimit']
     info_source = {
         "name": OperatorInfo.operator_list + list(OperatorInfo.operator_en_name_map.keys()),
         "skin_key": list(OperatorInfo.skins_map.keys()),
