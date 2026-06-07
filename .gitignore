@@ -2,3 +2,7 @@
 __pycache__/
 *.pyc
 .astrbot/
+data/
+docs/
+tests/
+scripts/sync_to_astrbot.sh
